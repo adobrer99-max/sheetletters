@@ -46,7 +46,7 @@ function note() {
   const len = Math.max(0, (secs($("#recTo").value) ?? duration) - (secs($("#recFrom").value) ?? 0));
   const gpu = !!navigator.gpu;
   let t;
-  if (p === "solo") t = "Solo recordings skip the splitting step, so this is quick.";
+  if (p === "solo") t = "Solo recordings skip the splitting step, so this is quick." + (phone ? " Finding the melody in a full band song needs a computer for now; phones and tablets are coming later." : "");
   else if (phone) t = "Finding the melody in a full song needs a computer for now. Phones and tablets are coming later; solo recordings work here already.";
   else t = `The first time, this downloads a 172 MB model (kept for next time). Splitting ${mmss(len)} of music takes ${gpu ? "about " + mmss(len * 2) + "–" + mmss(len * 4) : "a while: this browser has no WebGPU, so allow " + mmss(len * 8) + " or more. Chrome or Edge on a computer is much faster"}.`;
   $("#recNote").textContent = t;
