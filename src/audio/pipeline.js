@@ -9,7 +9,8 @@
 // Steps 3–5 are cheap and re-run instantly when the user fixes the speed, the bar line or the part,
 // so the expensive split is done once per song.
 
-import { findBeat, beatsToBpm } from "./rhythm.js";
+import { findBeat, beatsToBpm, beatChroma } from "./rhythm.js";
+import { estimateKey, chordsPerBeat, placeChords, majorOrMinor } from "./chords.js";
 import { melodyLine, quantize, toMidiFile, PARTS } from "./melody.js";
 import { parseMIDI } from "../parse/midi.js";
 
@@ -45,6 +46,15 @@ export async function audioDuration(file) {
   const probe = new Ctx(1, 1, SPLIT_RATE);
   const buf = await new Promise((ok, bad) => probe.decodeAudioData(bytes, ok, bad));
   return buf.duration;
+}
+
+// does a solo recording play chords? (more than a third of the time, two or more notes at once)
+function polyphonic(events = []) {
+  let both = 0, any = 0;
+  const edges = events.flatMap((e) => [[e.startTimeSeconds, 1], [e.startTimeSeconds + e.durationSeconds, -1]]).sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  let on = 0, last = 0;
+  for (const [t, d] of edges) { if (on >= 1) any += t - last; if (on >= 2) both += t - last; on += d; last = t; }
+  return any > 0 && both / any > 0.33;
 }
 
 const rms = (a) => { let s = 0, n = 0; for (let i = 0; i < a.length; i += 5) { s += a[i] * a[i]; n++; } return Math.sqrt(s / Math.max(1, n)); };
@@ -119,6 +129,7 @@ export class RecordingImport {
       for (let i = 0; i < src.length; i++) { src[i] = drums[i] + 0.6 * bass[i]; harmony[i] = other[i] + bass[i]; }
     }
     this.beat = findBeat(src, NOTE_RATE, { perBar, bpm, harmony });
+    this.harmonyAudio = harmony;
   }
 
   /** The audio of a part (for "hear it" and for note-finding). */
@@ -161,11 +172,31 @@ export class RecordingImport {
     const s = (this.settings = { perBar: 4, grid: 0.25, barShift: 0, ...settings });
     const line = melodyLine(this.events[s.part] || [], s.part);
     const downbeat = (this.beat.downbeat + s.barShift + s.perBar * 8) % s.perBar;
-    const { notes } = quantize(line, this.beat.beats, { downbeat, perBar: s.perBar, grid: s.grid });
+    const { notes, origin } = quantize(line, this.beat.beats, { downbeat, perBar: s.perBar, grid: s.grid });
     const bpm = beatsToBpm(this.beat.beats);
+    // what's sounding in each beat: for the key, and for chord names
+    if (this._chromaFor !== this.beat.beats) { this.harmony = beatChroma(this.harmonyAudio, NOTE_RATE, this.beat.beats); this._chromaFor = this.beat.beats; }
+    const { chroma, energy } = this.harmony;
+    const weights = new Array(12).fill(0);
+    chroma.forEach((c, i) => { for (let k = 0; k < 12; k++) weights[k] += c[k] * energy[i]; });
+    const total = weights.reduce((a, b) => a + b, 0) || 1;
+    for (let k = 0; k < 12; k++) weights[k] /= total;
+    const melodyW = new Array(12).fill(0);
+    for (const n of notes) melodyW[n.midi % 12] += n.off - n.on;
+    const mt = melodyW.reduce((a, b) => a + b, 0) || 1;
+    let key = estimateKey(weights.map((w, k) => w + 0.5 * (melodyW[k] / mt)));
+    const chordsWanted = !!this.stems || polyphonic(this.events[s.part]);
+    const perBeat = chordsWanted ? chordsPerBeat(chroma, energy) : null;
+    if (perBeat) key = majorOrMinor(key, perBeat);
     const name = (this.file?.name || "Recording").replace(/\.[^.]+$/, "");
     if (!notes.length) return null; // nothing clear in this part: the panel says so and offers the others
-    const score = parseMIDI(toMidiFile(notes, { bpm, perBar: s.perBar }).buffer);
+    const score = parseMIDI(toMidiFile(notes, { bpm, perBar: s.perBar, key }).buffer);
+    // chord names: from the bass and other parts of a split song, or a solo that plays chords (piano, guitar)
+    if (perBeat) {
+      const placed = placeChords(perBeat, { origin, perBar: s.perBar, measures: score.measures.length, fifths: key.fifths });
+      score.measures.forEach((m, i) => { m.harmony = placed[i]; });
+      score.chordsHeard = placed.some((c) => c.length);
+    }
     score.title = name;
     score.format = `a recording (${PARTS[s.part].label.toLowerCase()})`;
     score.fromRecording = { part: s.part, bpm: Math.round(bpm), notes: notes.length };

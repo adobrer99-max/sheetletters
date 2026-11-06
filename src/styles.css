@@ -203,7 +203,6 @@ button, input, select { font: inherit; color: inherit; }
   /* off-screen measures skip layout and paint; "auto" remembers each one's real size once seen */
   content-visibility: auto; contain-intrinsic-size: auto 12em auto 8em;
 }
-@media print { .measure { content-visibility: visible; } }
 .measure:last-child, .measure.final { border-right: 3px double var(--rule); }
 .measure.rep-start { border-left: 3px double var(--muted); }
 .measure.rep-end { border-right: 3px double var(--muted); }
@@ -275,3 +274,36 @@ footer a { color: var(--accent); }
 .rec-fix .label { font-size: .78rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-left: 6px; }
 .rec-fix .label:first-child { margin-left: 0; }
 .rec audio { width: 100%; max-width: 520px; margin-top: 6px; }
+
+/* note names */
+.names-select { border: 1px solid var(--rule); background: var(--sheet); color: var(--ink); border-radius: 8px; padding: 5px 8px; font: inherit; font-size: .9rem; max-width: 100%; }
+.note.word { letter-spacing: -.01em; }
+.note .acc.pre { margin-right: .05em; vertical-align: .15em; }
+
+/* print: just the song, black on white, bars kept whole */
+.print-only { display: none; }
+@media print {
+  :root, :root[data-theme="dark"], :root:not([data-theme="light"]) {
+    --paper: #fff; --sheet: #fff; --ink: #000; --muted: #444; --rule: #999; --accent: #000; --accent-soft: #fff;
+    color-scheme: light;
+  }
+  @page { margin: 14mm 12mm; }
+  html, body { background: #fff !important; color: #000; }
+  .top, .drop, .spotify-form, #spotifyCard, #recPanel, #scanHelp, #error, .controls, .player, .actions, footer,
+  .example { display: none !important; }
+  #result .wrap, .wrap { max-width: none; padding: 0; margin: 0; }
+  .song { margin: 0 0 6mm; }
+  .song h2 { font-size: 20pt; margin: 0 0 2mm; }
+  .facts { font-size: 9pt; color: #444; }
+  .sheet { border: 0; box-shadow: none; padding: 0; background: #fff; }
+  .measure { content-visibility: visible; break-inside: avoid; page-break-inside: avoid; }
+  .measure.playing, .measure.loop-in { background: none; box-shadow: none; }
+  .ev.on { background: none; box-shadow: none; }
+  .mnum { color: #555; pointer-events: none; }
+  .note.held { opacity: .5; }
+  .plain { border: 0; padding: 0; font-size: 9.5pt; white-space: pre; }
+  .print-only { display: block; }
+  .print-credit { margin: 1mm 0 0; font-size: 7.5pt; color: #777; }
+  .sheet { font-size: .9em; } /* a little more on each page */
+  a { color: inherit; text-decoration: none; }
+}

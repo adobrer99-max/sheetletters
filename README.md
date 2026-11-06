@@ -19,6 +19,14 @@ Live at **[adamdobrer.ca/projects/sheet-letters](https://adamdobrer.ca/projects/
 | **Spotify / YouTube links** | Finds the song's name and searches sheet-music sites for it |
 | **PDFs and photos** | Explains the one extra step (music recognition) they need |
 
+## Reading it your way
+
+- **Note names:** letters (C D E), Do Re Mi with C as Do (as in Quebec, France and Latin America), Do Re Mi
+  with the key's home note as Do, or scale-step numbers (1 2 3; in minor keys the minor home note is 1).
+- **Chord names** over the notes, from the score's chord symbols, worked out from the notes, or heard in a
+  recording.
+- **Print** gives clean black-on-white pages with whole bars, in whichever names you've chosen.
+
 ## How a recording becomes letters
 
 ```
@@ -26,6 +34,7 @@ recording ──► split into drums · bass · other · vocals   (HTDemucs, in 
           ──► find the beat from the drums and bass      (src/audio/rhythm.js)
           ──► hear the notes in the part you picked      (Basic Pitch, in a Web Worker)
           ──► keep one melody line, put it on the beat   (src/audio/melody.js)
+          ──► name the chords and the key                (src/audio/chords.js)
           ──► write it as MIDI and read it like any song (src/parse/midi.js)
 ```
 

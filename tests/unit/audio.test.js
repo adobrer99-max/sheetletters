@@ -110,3 +110,40 @@ describe("bar lines from chord changes", () => {
     expect(pickDownbeat(flat, 43, beats, 4, harmonyChange(x, RATE, beats))).toBe(1);
   });
 });
+
+import { estimateKey, chordsPerBeat, placeChords, majorOrMinor } from "../../src/audio/chords.js";
+import { beatChroma } from "../../src/audio/rhythm.js";
+
+describe("chords and key from a recording", () => {
+  // two beats per chord: C G Am F, then E♭ B♭ Cm A♭ (sounded as plain sine-wave triads)
+  const tone = (x, t0, dur, midi, amp = 0.1) => { for (let j = 0; j < dur * RATE; j++) { const k = Math.round(t0 * RATE) + j; if (k < x.length) x[k] += amp * Math.sin((2 * Math.PI * 440 * 2 ** ((midi - 69) / 12) * j) / RATE); } };
+  const play = (chords) => {
+    const beats = Array.from({ length: chords.length * 2 }, (_, i) => 0.3 + i * 0.5);
+    const x = new Float32Array(Math.round((beats.at(-1) + 1) * RATE));
+    chords.forEach((ch, c) => { for (const m of ch) tone(x, beats[c * 2], 1.0, m); tone(x, beats[c * 2], 1.0, ch[0] - 12, 0.15); });
+    return { x, beats };
+  };
+  it("names major and minor chords and holds them across beats", () => {
+    const { x, beats } = play([[60, 64, 67], [55, 59, 62], [57, 60, 64], [53, 57, 60]]);
+    const { chroma, energy } = beatChroma(x, RATE, beats);
+    const got = chordsPerBeat(chroma, energy).map((c) => (c ? "C C♯ D E♭ E F F♯ G A♭ A B♭ B".split(" ")[c.root] + (c.minor ? "m" : "") : "-"));
+    expect(got).toEqual(["C", "C", "G", "G", "Am", "Am", "F", "F"]);
+  });
+  it("finds the key, and spells chords for it", () => {
+    const { x, beats } = play([[63, 67, 70], [58, 62, 65], [60, 63, 67], [56, 60, 63]]);
+    const { chroma, energy } = beatChroma(x, RATE, beats);
+    const w = new Array(12).fill(0);
+    chroma.forEach((c, i) => c.forEach((v, k) => { w[k] += v * energy[i]; }));
+    const perBeat = chordsPerBeat(chroma, energy);
+    const key = majorOrMinor(estimateKey(w), perBeat);
+    expect(key).toMatchObject({ fifths: -3, minor: false });
+    const placed = placeChords(perBeat, { origin: 0, perBar: 4, measures: 2, fifths: key.fifths });
+    expect(placed.map((m) => m.map((c) => `${c.t}:${c.label}`))).toEqual([["0:E♭", "2:B♭"], ["0:Cm", "2:A♭"]]);
+  });
+  it("keys: C major, A minor, E major", () => {
+    const prof = (pcs) => { const w = new Array(12).fill(0.1); pcs.forEach((p, i) => { w[p] += i < 3 ? 3 : 1; }); return w; };
+    expect(estimateKey(prof([0, 4, 7, 2, 5, 9, 11]))).toMatchObject({ fifths: 0, minor: false });
+    expect(estimateKey(prof([9, 0, 4, 2, 5, 7, 11]))).toMatchObject({ fifths: 0, minor: true });
+    expect(estimateKey(prof([4, 8, 11, 6, 9, 1, 3]))).toMatchObject({ fifths: 4, minor: false });
+  });
+});

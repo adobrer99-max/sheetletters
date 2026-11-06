@@ -3,12 +3,24 @@ import { keyLabel } from "./score/harmony.js";
 import { normFifths, transposeScore } from "./score/transpose.js";
 import { opts, state } from "./state.js";
 import { $, EPS, accText, esc, keyName } from "./util.js";
+import { noteName, nameText, chordText, NAME_WIDTH } from "./score/names.js";
 
 /* ---------- rendering ---------- */
+// the key each measure is in, for Do-Re-Mi and number names: { fifths, minor } by measure index
+function keysByMeasure(s) {
+  let fifths = s.keyInfo.fifths, minor = s.keyInfo.mode === "minor";
+  return s.measures.map((m) => {
+    if (m.key !== undefined) { fifths = m.key; if (m.mode) minor = m.mode === "minor"; }
+    return { fifths, minor };
+  });
+}
+let nameKey = { fifths: 0, minor: false }; // the measure being drawn
+
 function noteHTML(n) {
-  const acc = accText(n.alter, false);
+  const x = noteName(n, opts.names || "letters", nameKey.fifths, nameKey.minor);
   const oct = opts.octave ? `<sub>${n.octave}</sub>` : "";
-  return `<span class="note${n.held ? " held" : ""}" data-l="${n.step}">${n.step}${acc ? `<span class="acc">${acc}</span>` : ""}${oct}</span>`;
+  const pre = x.pre ? `<span class="acc pre">${x.pre}</span>` : "";
+  return `<span class="note${n.held ? " held" : ""}${x.text.length > 1 ? " word" : ""}" data-l="${n.step}">${pre}${x.text}${x.acc ? `<span class="acc">${x.acc}</span>` : ""}${oct}</span>`;
 }
 function lyricText(l) { return l.text + (l.syllabic === "begin" || l.syllabic === "middle" ? "-" : ""); }
 
@@ -20,7 +32,7 @@ function renderFacts() {
   if (state.transpose) facts.push(`<span class="moved">Transposed ${semiText(state.transpose)} from ${keyLabel(orig.fifths, orig.mode)}</span>`);
   if (first.time) facts.push(`<span>Time <b>${first.time}</b></span>`);
   facts.push(`<span><b>${s.measures.length}</b> measures</span>`);
-  if (s.hasChords) facts.push(`<span>Chords ${s.chordSource === "score" ? "from the chord symbols in the score" : "worked out from the notes"}</span>`);
+  if (s.hasChords) facts.push(`<span>Chords ${s.chordsHeard ? "heard in the recording" : s.chordSource === "score" ? "from the chord symbols in the score" : "worked out from the notes"}</span>`);
   facts.push(`<span>from ${s.format}</span>`);
   $("#facts").innerHTML = facts.join("");
 }
@@ -52,8 +64,10 @@ function relabel() {
   const s = state.score, rows = s.rows.filter((r) => state.visible.has(r.id));
   const measures = $("#measures").children;
   if (measures.length !== s.measures.length) return false;
+  const keys = keysByMeasure(s);
   for (let mi = 0; mi < measures.length; mi++) {
     const el = measures[mi], m = s.measures[mi];
+    nameKey = keys[mi];
     for (const ev of el.querySelectorAll(".ev[data-i]")) {
       const e = m.rows[rows[+ev.dataset.r]?.id]?.[+ev.dataset.i];
       if (!e) return false;
@@ -63,7 +77,7 @@ function relabel() {
     }
     const chords = el.querySelectorAll(".chord");
     if (chords.length && chords.length !== m.chords.length) return false;
-    chords.forEach((c, i) => { c.textContent = m.chords[i].label; });
+    chords.forEach((c, i) => { c.textContent = chordText(m.chords[i], opts.names); });
     if (chords.length && !opts.compact) { // a longer chord name can need a wider measure
       const hasLyrics = $("#optLyrics").closest(".chip").hidden === false;
       const w = measureWidth(m, rows.map((r) => m.rows[r.id] || []), opts.lyrics && hasLyrics, true).toFixed(1) + "em";
@@ -85,7 +99,8 @@ function measureWidth(m, visibleRows, showLyrics, showChords) {
   // room for lyrics: each syllable needs its own width so neighbours don't run together
   const lyricRoom = showLyrics ? Math.max(0, ...visibleRows.map((evs) => evs.reduce((w, e) => w + (e.lyric ? Math.max(1.6, lyricText(e.lyric).length * 0.42 + 0.6) : 1.6), 0))) : 0;
   const chordRoom = showChords ? m.chords.reduce((w, c) => w + c.label.length * 0.62 + 0.8, 0) : 0;
-  return Math.min(Math.max(m.len / shortest * (showLyrics ? 2.6 : 2), count * 2.1, lyricRoom, chordRoom, 3.5), 40);
+  const wide = NAME_WIDTH[opts.names] || 1; // Do-Re-Mi syllables need more room than single letters
+  return Math.min(Math.max(m.len / shortest * (showLyrics ? 2.6 : 2) * Math.sqrt(wide), count * 2.1 * wide, lyricRoom, chordRoom, 3.5), 40);
 }
 function render() {
   const s = state.score;
@@ -105,7 +120,9 @@ function render() {
     : "";
 
   const html = [];
+  const keys = keysByMeasure(s);
   s.measures.forEach((m, mi) => {
+    nameKey = keys[mi];
     const visibleRows = rows.map((r) => m.rows[r.id] || []);
     const width = measureWidth(m, visibleRows, showLyrics, showChords);
     const cls = ["measure"];
@@ -119,7 +136,7 @@ function render() {
     if (m.repStart) head.push(`<span class="rep">repeat from here</span>`);
     if (m.repEnd) head.push(`<span class="rep">↺ repeat</span>`);
     const chordLine = showChords && m.chords.length
-      ? `<div class="chords${opts.compact ? " compact" : ""}">${m.chords.map((c) => `<span class="chord"${opts.compact ? "" : ` style="left:${(c.t / m.len * 100).toFixed(2)}%"`}>${esc(c.label)}</span>`).join("")}</div>`
+      ? `<div class="chords${opts.compact ? " compact" : ""}">${m.chords.map((c) => `<span class="chord"${opts.compact ? "" : ` style="left:${(c.t / m.len * 100).toFixed(2)}%"`}>${esc(chordText(c, opts.names))}</span>`).join("")}</div>`
       : showChords && s.hasChords ? `<div class="chords"></div>` : "";
     const body = chordLine + visibleRows.map((evs, ri) => {
       const tall = Math.max(1, ...evs.map((e) => e.notes.length));
@@ -153,11 +170,13 @@ function toText() {
   const showChords = opts.chords && s.hasChords;
   out.push("[ ] = play together   ~ = keep holding (tied)   _ = rest   | = bar line", "");
   const PER_LINE = 4;
+  const keys = keysByMeasure(s), naming = opts.names || "letters";
   for (let i = 0; i < s.measures.length; i += PER_LINE) {
     const group = s.measures.slice(i, i + PER_LINE);
     out.push(`m.${group[0].number}`);
     // build each row's measures as [notes, words] cells, then pad so bar lines line up across rows
-    const cells = rows.map((r, ri) => group.map((m) => {
+    const cells = rows.map((r, ri) => group.map((m, gi) => {
+      const key = keys[i + gi];
       let notes = "", words = "", chords = "";
       const evs = m.rows[r.id] || [];
       // chord names ride on the top row: each goes over the note it starts on (or the one before it)
@@ -165,11 +184,11 @@ function toText() {
       if (ri === 0 && showChords) for (const c of m.chords) {
         let k = evs.findIndex((e) => e.t > c.t + EPS) - 1;
         if (k < 0) k = evs.findIndex((e) => e.t > c.t + EPS) === -1 ? evs.length - 1 : 0;
-        chordAt.set(k, (chordAt.has(k) ? chordAt.get(k) + " " : "") + c.label);
+        chordAt.set(k, (chordAt.has(k) ? chordAt.get(k) + " " : "") + chordText(c, naming));
       }
       if (!evs.length && chordAt.size) chords = " " + [...chordAt.values()].join(" ") + " ";
       for (const [k, e] of evs.entries()) {
-        let tok = e.rest ? "_" : [...e.notes].reverse().map((n) => (n.held ? "~" : "") + n.step + accText(n.alter, false) + (opts.octave ? n.octave : "")).join(" ");
+        let tok = e.rest ? "_" : [...e.notes].reverse().map((n) => (n.held ? "~" : "") + nameText(n, naming, key.fifths, key.minor) + (opts.octave ? n.octave : "")).join(" ");
         if (e.notes.length > 1) tok = `[${tok}]`;
         const ly = e.lyric ? lyricText(e.lyric) : "";
         const ch = chordAt.get(k) || "";
@@ -196,4 +215,4 @@ function toText() {
   return out.join("\n");
 }
 
-export { noteHTML, lyricText, renderFacts, semiText, accCount, fillTransposeMenu, setTranspose, relabel, measureWidth, render, toText };
+export { keysByMeasure, noteHTML, lyricText, renderFacts, semiText, accCount, fillTransposeMenu, setTranspose, relabel, measureWidth, render, toText };

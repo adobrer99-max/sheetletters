@@ -59,3 +59,31 @@ test("a YouTube link offers searches and a private player", async ({ page }) => 
   await page.click("#spotListen");
   await expect(page.locator("#spotPlayer iframe")).toHaveAttribute("src", /youtube-nocookie\.com\/embed\/hLQl3WQQoQ0/);
 });
+
+test("note names: Do-Re-Mi and numbers, on screen and in copied text", async ({ page }) => {
+  await page.click("#exampleBtn");
+  const first = page.locator(".measure").first().locator(".ev .note").first();
+  await page.selectOption("#optNames", "fixed");
+  await expect(first).toHaveText("Do");
+  await page.selectOption("#optNames", "numbers");
+  await expect(first).toHaveText("1");
+  await page.click("#transUp"); await page.click("#transUp"); // numbers don't change when the key does
+  await expect(first).toHaveText("1");
+  await page.selectOption("#optNames", "movable");
+  await expect(first).toHaveText("Do");
+  const text = await page.evaluate(() => window.SheetLetters.toText());
+  expect(text).toMatch(/\|\s+Do\s+Do\s+Sol\s+Sol\s/);
+  await page.selectOption("#optNames", "letters");
+  await expect(first).toHaveText("D");
+});
+
+test("printing shows just the song", async ({ page }) => {
+  await page.click("#exampleBtn");
+  await page.emulateMedia({ media: "print" });
+  await expect(page.locator(".controls")).toBeHidden();
+  await expect(page.locator("#player")).toBeHidden();
+  await expect(page.locator(".top")).toBeHidden();
+  await expect(page.locator("#songTitle")).toBeVisible();
+  await expect(page.locator(".measure")).toHaveCount(12);
+  await expect(page.locator(".print-credit")).toBeVisible();
+});

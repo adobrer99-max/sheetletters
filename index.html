@@ -119,6 +119,7 @@
         <span class="example" id="exampleTag" hidden>Example</span>
         <h2 id="songTitle"></h2>
         <div class="facts" id="facts"></div>
+        <p class="print-only print-credit">Sheet Letters · adamdobrer.ca/projects/sheet-letters</p>
       </div>
 
       <div class="controls" id="controls">
@@ -131,6 +132,10 @@
           <label class="chip"><input type="checkbox" id="optChords" checked><span>Chord names</span></label>
           <label class="chip"><input type="checkbox" id="optCompact"><span>Compact</span></label>
           <label class="chip"><input type="checkbox" id="optPlain"><span>Plain text</span></label>
+        </div>
+        <div class="group">
+          <label class="label" for="optNames">Names</label>
+          <select id="optNames" class="names-select"></select>
         </div>
         <div class="group transpose">
           <span class="label">Key</span>
@@ -172,6 +177,7 @@
 
       <div class="actions">
         <button class="btn" id="copyBtn" type="button">Copy as text</button>
+        <button class="btn" id="printBtn" type="button">Print</button>
         <span class="status" id="status" aria-live="polite"></span>
       </div>
     </div>

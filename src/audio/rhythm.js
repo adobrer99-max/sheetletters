@@ -132,34 +132,42 @@ export function trackBeats(env, fps, bpm, tightness = 100) {
   return beats;
 }
 
-/** How much the harmony changes at each beat: the notes sounding in each beat (as 12 pitch classes)
- *  compared with the beat before. Chords usually change on the first beat of a bar. */
-export function harmonyChange(samples, rate, beats) {
-  const W = 4096, out = new Float32Array(beats.length);
+/** The notes sounding in each beat, as 12 pitch-class strengths (0 = C), each beat's vector scaled
+ *  to length 1, plus how loud the beat is. Read from two windows across each beat. */
+export function beatChroma(samples, rate, beats) {
+  const W = 4096, chroma = [], energy = new Float32Array(beats.length);
   const re = new Float32Array(W), im = new Float32Array(W);
   const win = new Float32Array(W).map((_, i) => 0.5 - 0.5 * Math.cos((2 * Math.PI * i) / W));
   const pcOf = new Int8Array(W / 2).fill(-1);
   for (let k = 1; k < W / 2; k++) {
     const f = (k * rate) / W;
-    if (f >= 60 && f <= 2000) pcOf[k] = ((Math.round(12 * Math.log2(f / 440)) % 12) + 12 + 9) % 12; // 0 = C
+    if (f >= 60 && f <= 2000) pcOf[k] = ((Math.round(12 * Math.log2(f / 440)) % 12) + 12 + 9) % 12;
   }
-  let prev = null;
   beats.forEach((b, i) => {
     const end = i + 1 < beats.length ? beats[i + 1] : b + (beats[i] - (beats[i - 1] ?? b - 0.5));
-    const chroma = new Float32Array(12);
-    // a couple of windows across the beat, averaged
+    const c = new Float32Array(12);
+    let e = 0;
     for (const at of [0.3, 0.7]) {
-      const c = Math.round((b + (end - b) * at) * rate) - W / 2;
-      for (let j = 0; j < W; j++) { const v = samples[c + j]; re[j] = (v === undefined ? 0 : v) * win[j]; im[j] = 0; }
+      const start = Math.round((b + (end - b) * at) * rate) - W / 2;
+      for (let j = 0; j < W; j++) { const v = samples[start + j]; re[j] = (v === undefined ? 0 : v) * win[j]; im[j] = 0; e += re[j] * re[j]; }
       fft(re, im);
-      for (let k = 1; k < W / 2; k++) if (pcOf[k] >= 0) chroma[pcOf[k]] += Math.log1p(10 * Math.hypot(re[k], im[k]));
+      for (let k = 1; k < W / 2; k++) if (pcOf[k] >= 0) c[pcOf[k]] += re[k] * re[k] + im[k] * im[k];
     }
-    const norm = Math.hypot(...chroma) || 1;
-    for (let k = 0; k < 12; k++) chroma[k] /= norm;
-    out[i] = prev ? 1 - chroma.reduce((acc, v, k) => acc + v * prev[k], 0) : 0;
-    prev = chroma;
+    // loudness per note first, then squash: squashing each frequency bin instead lets the faint
+    // spill between notes drown out which notes are actually playing
+    for (let k = 0; k < 12; k++) c[k] = Math.sqrt(c[k]);
+    const norm = Math.hypot(...c) || 1;
+    for (let k = 0; k < 12; k++) c[k] /= norm;
+    chroma.push(c); energy[i] = Math.sqrt(e / (2 * W));
   });
-  return out;
+  return { chroma, energy };
+}
+
+/** How much the harmony changes at each beat (1 - similarity with the beat before).
+ *  Chords usually change on the first beat of a bar. */
+export function harmonyChange(samples, rate, beats) {
+  const { chroma } = beatChroma(samples, rate, beats);
+  return Float32Array.from(chroma, (c, i) => (i ? 1 - c.reduce((acc, v, k) => acc + v * chroma[i - 1][k], 0) : 0));
 }
 
 /** Which beat (0..perBar-1) starts each bar. Two clues: chords tend to change there, and the kick

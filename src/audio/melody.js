@@ -75,7 +75,7 @@ export function quantize(line, beats, { downbeat = 0, perBar = 4, grid = 0.25 } 
 }
 
 /** A standard MIDI file (format 0) holding the melody at a steady tempo. */
-export function toMidiFile(notes, { bpm = 120, perBar = 4, title = "", ppq = 480 } = {}) {
+export function toMidiFile(notes, { bpm = 120, perBar = 4, title = "", ppq = 480, key = null } = {}) {
   const ev = [];
   const vlq = (n) => { const b = [n & 0x7f]; while ((n >>= 7)) b.unshift((n & 0x7f) | 0x80); return b; };
   const meta = (type, data) => [0xff, type, ...vlq(data.length), ...data];
@@ -85,6 +85,7 @@ export function toMidiFile(notes, { bpm = 120, perBar = 4, title = "", ppq = 480
   const us = Math.round(60e6 / bpm);
   header.push([0, meta(0x51, [(us >> 16) & 255, (us >> 8) & 255, us & 255])]);
   header.push([0, meta(0x58, [perBar, 2, 24, 8])]);
+  if (key) header.push([0, meta(0x59, [key.fifths & 255, key.minor ? 1 : 0])]); // so notes are spelled for the key
   for (const n of notes) {
     ev.push([Math.round(n.on * ppq), [0x90, n.midi, 88]]);
     ev.push([Math.round(n.off * ppq), [0x80, n.midi, 0]]);

@@ -1,3 +1,4 @@
+import { NAMINGS } from "./score/names.js";
 import "./styles.css";
 import "./links.js";
 import { loadExample, loadFile } from "./load.js";
@@ -18,6 +19,11 @@ const bind = (id, key) => {
   el.addEventListener("input", () => { opts[key] = el.type === "checkbox" ? el.checked : parseFloat(el.value); saveOpts(); render(); });
 };
 bind("#optOctave", "octave"); bind("#optLyrics", "lyrics"); bind("#optColor", "color");
+// note names: letters, Do-Re-Mi (fixed or movable) or numbers
+$("#optNames").innerHTML = Object.entries(NAMINGS).map(([k, label]) => `<option value="${k}">${label}</option>`).join("");
+if (!NAMINGS[opts.names]) opts.names = "letters";
+$("#optNames").value = opts.names;
+$("#optNames").addEventListener("change", (e) => { opts.names = e.target.value; saveOpts(); render(); });
 bind("#optChords", "chords"); bind("#optCompact", "compact"); bind("#optPlain", "plain"); bind("#optSize", "size");
 
 $("#openBtn").addEventListener("click", () => $("#fileInput").click());
@@ -37,6 +43,10 @@ document.addEventListener("drop", (e) => {
   if (f) loadFile(f);
 });
 
+$("#printBtn").addEventListener("click", () => {
+  if (player.state.playing) player.pause(); // the highlight would print
+  window.print();
+});
 $("#copyBtn").addEventListener("click", () => {
   const text = toText();
   const done = () => { $("#status").textContent = "Copied. Paste it into Notes or any text app."; };
