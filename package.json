@@ -7,7 +7,7 @@
   "author": "Adam Dobrer",
   "repository": {
     "type": "git",
-    "url": "https://github.com/adobrer99-max/sheet-letters.git"
+    "url": "https://github.com/adobrer99-max/sheetletters.git"
   },
   "scripts": {
     "dev": "vite",
