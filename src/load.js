@@ -7,6 +7,8 @@ import { fillTransposeMenu, render } from "./render.js";
 import { finish } from "./score/finish.js";
 import { state } from "./state.js";
 import { $, decodeText, esc } from "./util.js";
+import { isAudioFile } from "./audio/pipeline.js";
+import { openRecording } from "./recording.js";
 
 /* ---------- loading ---------- */
 function showError(msg) { const e = $("#error"); e.textContent = msg; e.hidden = !msg; }
@@ -64,11 +66,12 @@ async function loadFile(file) {
     const buf = await file.arrayBuffer();
     const u8 = new Uint8Array(buf);
     const head = String.fromCharCode(...u8.subarray(0, 4));
+    if (isAudioFile(file, head, u8)) { $("#scanHelp").hidden = true; return openRecording(file); }
     let score;
     if (head === "MThd" || head === "RIFF" || /^(mid|midi|kar|rmi)$/.test(ext)) score = parseMIDI(buf);
     else if (head === "PK\u0003\u0004" || ext === "mxl") score = parseMusicXML(await readMxl(buf));
     else if (/^(musicxml|xml)$/.test(ext) || head.startsWith("<") || u8[0] === 0xEF || u8[0] === 0xFF || u8[0] === 0xFE) score = parseMusicXML(decodeText(u8));
-    else throw new Error(`“${name}” isn't a format Sheet Letters can read. Open a MusicXML (.musicxml, .xml, .mxl) or MIDI (.mid) file. Most notation apps, including MuseScore, Sibelius, Finale and Dorico, can export MusicXML.`);
+    else throw new Error(`“${name}” isn't a format Sheet Letters can read. Open a MusicXML (.musicxml, .xml, .mxl) or MIDI (.mid) file, or a recording (MP3, WAV, M4A, FLAC). Most notation apps, including MuseScore, Sibelius, Finale and Dorico, can export MusicXML.`);
     show(score, name, false);
   } catch (err) {
     console.error(err);

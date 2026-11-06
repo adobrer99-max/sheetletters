@@ -1,6 +1,7 @@
 // From the notes heard in a part to one melody line, placed on the beat, written as a MIDI file
 // that Sheet Letters' own MIDI reader then turns into measures, a key and note names.
-// Note events look like Basic Pitch's: { startTimeSeconds, durationSeconds, pitch_midi, amplitude }.
+// Note events look like Basic Pitch's: { startTimeSeconds, durationSeconds, pitchMidi, amplitude }
+// (its Python version says pitch_midi; both are accepted).
 
 import { beatPosition } from "./rhythm.js";
 
@@ -8,7 +9,7 @@ import { beatPosition } from "./rhythm.js";
 // notes sounding at once is kept.
 export const PARTS = {
   vocals: { label: "Vocals", min: 40, max: 84, pick: "loudest" },
-  other: { label: "Lead instrument", min: 45, max: 96, pick: "highest" },
+  other: { label: "Lead instrument", min: 45, max: 96, pick: "loudest" }, // the tune is usually louder than the chords around it
   bass: { label: "Bass", min: 24, max: 60, pick: "lowest" },
   solo: { label: "Solo recording", min: 21, max: 108, pick: "highest" },
 };
@@ -17,8 +18,8 @@ export const PARTS = {
 export function melodyLine(events, part = "vocals", { minLen = 0.07 } = {}) {
   const P = PARTS[part] || PARTS.vocals;
   const notes = events
-    .filter((e) => e.pitch_midi >= P.min && e.pitch_midi <= P.max && e.durationSeconds >= minLen)
-    .map((e) => ({ start: e.startTimeSeconds, end: e.startTimeSeconds + e.durationSeconds, midi: e.pitch_midi, amp: e.amplitude ?? 0.5 }))
+    .map((e) => ({ start: e.startTimeSeconds, end: e.startTimeSeconds + e.durationSeconds, midi: e.pitchMidi ?? e.pitch_midi, amp: e.amplitude ?? 0.5 }))
+    .filter((n) => n.midi >= P.min && n.midi <= P.max && n.end - n.start >= minLen)
     .sort((a, b) => a.start - b.start || b.amp - a.amp);
   if (!notes.length) return [];
   const loudest = Math.max(...notes.map((n) => n.amp));

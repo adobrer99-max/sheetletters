@@ -247,3 +247,31 @@ footer a { color: var(--accent); }
 @media (prefers-reduced-motion: no-preference) {
   .btn, .chip span { transition: background-color .12s, border-color .12s, color .12s; }
 }
+
+/* recordings */
+.rec { position: relative; padding-right: 44px; }
+.rec h2 { font: 400 1.45rem/1.15 var(--font-display); margin: 0; }
+.rec .by { color: var(--muted); margin: 2px 0 12px; }
+.rec .close { position: absolute; top: 8px; right: 8px; background: none; border: 0; font-size: 1.4rem; line-height: 1; cursor: pointer; color: var(--muted); padding: 4px 8px; border-radius: 6px; }
+.rec .close:hover { background: var(--paper); color: var(--ink); }
+.rec fieldset { border: 0; padding: 0; margin: 0 0 12px; display: flex; flex-wrap: wrap; gap: 8px; }
+.rec legend { font-weight: 700; margin-bottom: 8px; padding: 0; }
+.rec .chip small { color: var(--muted); font-weight: 400; margin-left: 4px; }
+.rec .chip input:checked + span small { color: inherit; opacity: .8; }
+.rec .chip:has(input:disabled) { opacity: .45; }
+.rec-range { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; margin-bottom: 8px; }
+.rec-range input { width: 4.5em; border: 1px solid var(--rule); background: var(--sheet); border-radius: 8px; padding: 5px 7px; text-align: center; }
+.rec .hint { color: var(--muted); font-size: .88rem; margin: 6px 0; }
+.rec-go { margin-top: 10px; }
+.rec-steps { list-style: none; padding: 0; margin: 0 0 10px; display: grid; gap: 4px; }
+.rec-steps li { display: flex; gap: 8px; align-items: baseline; color: var(--muted); }
+.rec-steps li::before { content: "○"; width: 1em; flex: none; }
+.rec-steps li.now { color: var(--ink); font-weight: 700; }
+.rec-steps li.now::before { content: "◐"; color: var(--accent); }
+.rec-steps li.done::before { content: "✓"; color: var(--accent); }
+.rec-steps li .sub { font-weight: 400; color: var(--muted); font-size: .88rem; }
+.rec progress { width: 100%; height: 8px; accent-color: var(--accent); }
+.rec-fix { display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; margin: 8px 0; }
+.rec-fix .label { font-size: .78rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-left: 6px; }
+.rec-fix .label:first-child { margin-left: 0; }
+.rec audio { width: 100%; max-width: 520px; margin-top: 6px; }

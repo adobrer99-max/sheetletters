@@ -132,16 +132,53 @@ export function trackBeats(env, fps, bpm, tightness = 100) {
   return beats;
 }
 
-/** Which beat (0..perBar-1) starts each bar: the phase where the low end hits hardest. */
-export function pickDownbeat(low, fps, beats, perBar = 4) {
-  const sums = new Array(perBar).fill(0);
+/** How much the harmony changes at each beat: the notes sounding in each beat (as 12 pitch classes)
+ *  compared with the beat before. Chords usually change on the first beat of a bar. */
+export function harmonyChange(samples, rate, beats) {
+  const W = 4096, out = new Float32Array(beats.length);
+  const re = new Float32Array(W), im = new Float32Array(W);
+  const win = new Float32Array(W).map((_, i) => 0.5 - 0.5 * Math.cos((2 * Math.PI * i) / W));
+  const pcOf = new Int8Array(W / 2).fill(-1);
+  for (let k = 1; k < W / 2; k++) {
+    const f = (k * rate) / W;
+    if (f >= 60 && f <= 2000) pcOf[k] = ((Math.round(12 * Math.log2(f / 440)) % 12) + 12 + 9) % 12; // 0 = C
+  }
+  let prev = null;
+  beats.forEach((b, i) => {
+    const end = i + 1 < beats.length ? beats[i + 1] : b + (beats[i] - (beats[i - 1] ?? b - 0.5));
+    const chroma = new Float32Array(12);
+    // a couple of windows across the beat, averaged
+    for (const at of [0.3, 0.7]) {
+      const c = Math.round((b + (end - b) * at) * rate) - W / 2;
+      for (let j = 0; j < W; j++) { const v = samples[c + j]; re[j] = (v === undefined ? 0 : v) * win[j]; im[j] = 0; }
+      fft(re, im);
+      for (let k = 1; k < W / 2; k++) if (pcOf[k] >= 0) chroma[pcOf[k]] += Math.log1p(10 * Math.hypot(re[k], im[k]));
+    }
+    const norm = Math.hypot(...chroma) || 1;
+    for (let k = 0; k < 12; k++) chroma[k] /= norm;
+    out[i] = prev ? 1 - chroma.reduce((acc, v, k) => acc + v * prev[k], 0) : 0;
+    prev = chroma;
+  });
+  return out;
+}
+
+/** Which beat (0..perBar-1) starts each bar. Two clues: chords tend to change there, and the kick
+ *  tends to hit hardest there. The harmony counts for more when there is any. */
+export function pickDownbeat(low, fps, beats, perBar = 4, change = null) {
+  const kick = new Array(perBar).fill(0), harm = new Array(perBar).fill(0);
   beats.forEach((b, i) => {
     const f = Math.round(b * fps);
     let v = 0;
     for (let k = f - 2; k <= f + 2; k++) if (low[k] > v) v = low[k];
-    sums[i % perBar] += v;
+    kick[i % perBar] += v;
+    if (change) harm[i % perBar] += change[i];
   });
-  return sums.indexOf(Math.max(...sums));
+  // compare the phases relative to each other (0 = weakest, 1 = strongest)
+  const spread = (a) => { const lo = Math.min(...a), hi = Math.max(...a); return a.map((x) => (hi > lo ? (x - lo) / (hi - lo) : 0)); };
+  const k = spread(kick), h = spread(harm);
+  const hasHarmony = change && Math.max(...harm) - Math.min(...harm) > 0.02 * beats.length / perBar;
+  const score = k.map((x, i) => (hasHarmony ? 0.4 * x + h[i] : x));
+  return score.indexOf(Math.max(...score));
 }
 
 /** Time in seconds -> beat number (fractional), interpolating between tracked beats and
@@ -190,8 +227,9 @@ export function octaveCheck(env, fps, beats) {
   return 1;
 }
 
-/** Find the beat of a recording in one go. `samples` is mono; returns { bpm, beats, downbeat }. */
-export function findBeat(samples, rate, { perBar = 4, bpm: forcedBpm } = {}) {
+/** Find the beat of a recording in one go. `samples` is mono; `harmony` (optional) is audio to read
+ *  the chords from, such as the bass and other parts of a split song. Returns { bpm, beats, downbeat }. */
+export function findBeat(samples, rate, { perBar = 4, bpm: forcedBpm, harmony } = {}) {
   const { env, low, fps } = onsetEnvelope(samples, rate);
   let bpm = forcedBpm || estimateTempo(env, fps);
   let beats = trackBeats(env, fps, bpm);
@@ -200,5 +238,6 @@ export function findBeat(samples, rate, { perBar = 4, bpm: forcedBpm } = {}) {
     const next = beatsToBpm(beats) * k;
     if (k !== 1 && next >= 60 && next <= 200) { bpm = next; beats = trackBeats(env, fps, bpm); }
   }
-  return { bpm: beatsToBpm(beats), beats, downbeat: pickDownbeat(low, fps, beats, perBar) };
+  const change = harmony ? harmonyChange(harmony, rate, beats) : null;
+  return { bpm: beatsToBpm(beats), beats, downbeat: pickDownbeat(low, fps, beats, perBar, change) };
 }

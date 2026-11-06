@@ -10,10 +10,24 @@ import { BasicPitch, outputToNotesPoly, noteFramesToTime } from "@spotify/basic-
 
 let model = null;
 
+// WebGL is fast on a real graphics chip, but some computers only have a software stand-in
+// (SwiftShader, llvmpipe), where it crawls or stalls. Plain JavaScript is the better choice there.
+function realGpu() {
+  try {
+    if (typeof OffscreenCanvas === "undefined") return false;
+    const gl = new OffscreenCanvas(1, 1).getContext("webgl2") || new OffscreenCanvas(1, 1).getContext("webgl");
+    if (!gl) return false;
+    const ext = gl.getExtension("WEBGL_debug_renderer_info");
+    const name = String(ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER));
+    return !/swiftshader|llvmpipe|softpipe|software|microsoft basic render/i.test(name);
+  } catch { return false; }
+}
+
 async function transcribe(samples, modelUrl, opts = {}) {
   if (!model) {
     // WebGL in a worker needs OffscreenCanvas; fall back to plain JavaScript where it's missing
-    try { await tf.setBackend(typeof OffscreenCanvas !== "undefined" ? "webgl" : "cpu"); } catch { await tf.setBackend("cpu"); }
+    const want = opts.backend || (realGpu() ? "webgl" : "cpu");
+    if (!(await tf.setBackend(want).catch(() => false))) await tf.setBackend("cpu");
     await tf.ready();
     model = new BasicPitch(modelUrl);
   }

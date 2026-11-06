@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { findBeat, beatPosition } from "../../src/audio/rhythm.js";
+import { findBeat, beatPosition, harmonyChange, pickDownbeat } from "../../src/audio/rhythm.js";
 import { melodyLine, quantize, toMidiFile } from "../../src/audio/melody.js";
 import { parseMIDI } from "../../src/parse/midi.js";
 import { finish } from "../../src/score/finish.js";
@@ -58,10 +58,15 @@ describe("melody line", () => {
     const line = melodyLine([ev(0, 0.5, 60), ev(0.05, 0.4, 67, 0.3), ev(0.5, 0.5, 62)], "vocals");
     expect(line.map((n) => n.midi)).toEqual([60, 62]);
   });
-  it("keeps the top note for a lead instrument and the bottom for bass", () => {
+  it("keeps the loudest note for a lead instrument, the top for solo piano, the bottom for bass", () => {
     const chord = [ev(0, 1, 60, 0.7), ev(0, 1, 64, 0.7), ev(0, 1, 67, 0.7)];
-    expect(melodyLine(chord, "other")[0].midi).toBe(67);
+    expect(melodyLine([ev(0, 1, 60, 0.4), ev(0, 1, 64, 0.9), ev(0, 1, 67, 0.4)], "other")[0].midi).toBe(64);
+    expect(melodyLine(chord, "solo")[0].midi).toBe(67);
     expect(melodyLine(chord.map((e) => ({ ...e, pitch_midi: e.pitch_midi - 24 })), "bass")[0].midi).toBe(36);
+  });
+  it("reads Basic Pitch's JavaScript field names", () => {
+    const line = melodyLine([{ startTimeSeconds: 0, durationSeconds: 0.5, pitchMidi: 60, amplitude: 0.8 }], "solo");
+    expect(line.map((n) => n.midi)).toEqual([60]);
   });
   it("drops faint bleed and blips, and fixes octave slips", () => {
     const line = melodyLine([ev(0, 0.5, 64), ev(0.5, 0.1, 76), ev(0.6, 0.5, 64), ev(1.1, 0.03, 70), ev(1.2, 0.4, 62, 0.05)], "vocals");
@@ -85,5 +90,23 @@ describe("placing notes on the beat and reading them back", () => {
     expect(s.measures).toHaveLength(2);
     const names = s.measures.flatMap((m) => (m.rows[s.rows[0].id] || []).filter((e) => !e.rest).map((e) => e.notes[0].step));
     expect(names).toEqual(["E", "E", "F", "G", "G", "F", "E", "D"]);
+  });
+});
+
+describe("bar lines from chord changes", () => {
+  it("prefers the beat where the chord changes when the kicks can't tell", () => {
+    // 100 BPM, a new chord every bar starting on beat 1 (index 1 here), equal kicks everywhere
+    const beats = Array.from({ length: 32 }, (_, i) => 0.4 + i * 0.6);
+    const chords = [[60, 64, 67], [55, 59, 62], [57, 60, 64], [53, 57, 60]];
+    const x = new Float32Array(Math.round(20 * RATE));
+    beats.forEach((b, i) => {
+      const bar = Math.floor((i - 1) / 4), ch = chords[((bar % 4) + 4) % 4];
+      for (let j = 0; j < 0.6 * RATE; j++) {
+        const k = Math.round(b * RATE) + j;
+        if (k < x.length) for (const m of ch) x[k] += 0.1 * Math.sin((2 * Math.PI * 440 * 2 ** ((m - 69) / 12) * j) / RATE);
+      }
+    });
+    const flat = new Float32Array(2000).fill(0.5); // the kick clue says nothing
+    expect(pickDownbeat(flat, 43, beats, 4, harmonyChange(x, RATE, beats))).toBe(1);
   });
 });

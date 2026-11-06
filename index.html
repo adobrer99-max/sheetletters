@@ -17,13 +17,13 @@
     <div class="open">
       <button class="btn primary" id="openBtn" type="button">Open a song…</button>
       <button class="btn" id="exampleBtn" type="button">Load example</button>
-      <input type="file" id="fileInput" hidden accept=".musicxml,.xml,.mxl,.mid,.midi,.kar,.pdf,.png,.jpg,.jpeg,.tif,.tiff,.webp,.heic,.bmp,.gif">
+      <input type="file" id="fileInput" hidden accept=".musicxml,.xml,.mxl,.mid,.midi,.kar,.mp3,.wav,.m4a,.aac,.flac,.ogg,.opus,.aif,.aiff,audio/*,.pdf,.png,.jpg,.jpeg,.tif,.tiff,.webp,.heic,.bmp,.gif">
     </div>
   </header>
 
   <div class="drop" id="drop">
     <span>Drop a file anywhere on this page, or use <b>Open a song</b>.</span>
-    <span class="formats"><span class="fmt">MUSICXML</span><span class="fmt">MXL</span><span class="fmt">MIDI</span><span class="fmt">PDF / PHOTO → see steps</span></span>
+    <span class="formats"><span class="fmt">MUSICXML</span><span class="fmt">MXL</span><span class="fmt">MIDI</span><span class="fmt">MP3 / WAV · recordings</span><span class="fmt">PDF / PHOTO → see steps</span></span>
   </div>
 
   <form class="spotify-form" id="spotifyForm" autocomplete="off">
@@ -48,6 +48,59 @@
   </section>
 
   <div class="msg error" id="error" hidden role="alert"></div>
+
+  <section class="msg rec" id="recPanel" hidden aria-live="polite">
+    <button class="close" id="recClose" type="button" aria-label="Close">×</button>
+    <h2 id="recTitle">A recording</h2>
+    <p class="by" id="recBy"></p>
+
+    <div id="recSetup">
+      <fieldset class="rec-parts">
+        <legend>Where's the melody?</legend>
+        <label class="chip"><input type="radio" name="recPart" value="vocals" checked><span>Vocals</span></label>
+        <label class="chip"><input type="radio" name="recPart" value="other"><span>Lead instrument <small>guitar, keys, synth</small></span></label>
+        <label class="chip"><input type="radio" name="recPart" value="bass"><span>Bass</span></label>
+        <label class="chip"><input type="radio" name="recPart" value="solo"><span>It's a solo recording <small>one instrument or voice</small></span></label>
+      </fieldset>
+      <div class="rec-range">
+        <label>From <input id="recFrom" inputmode="numeric" value="0:00" aria-label="Start time, minutes:seconds"></label>
+        <label>to <input id="recTo" inputmode="numeric" value="" aria-label="End time, minutes:seconds"></label>
+        <span class="hint">A shorter section is quicker: try one verse and chorus first.</span>
+      </div>
+      <p class="hint" id="recNote"></p>
+      <div class="rec-go">
+        <button class="btn primary" id="recGo" type="button">Turn it into letters</button>
+      </div>
+    </div>
+
+    <div id="recWork" hidden>
+      <ol class="rec-steps" id="recSteps"></ol>
+      <progress id="recBar" max="1" value="0"></progress>
+      <p class="hint" id="recEta"></p>
+      <button class="btn" id="recStop" type="button">Stop</button>
+    </div>
+
+    <div id="recDone" hidden>
+      <p class="hint" id="recSummary"></p>
+      <div class="rec-fix">
+        <span class="label">Speed</span>
+        <button class="btn" type="button" id="recHalf" title="The letters run twice as fast as the song">Half</button>
+        <button class="btn" type="button" id="recDouble" title="The letters run half as fast as the song">Double</button>
+        <span class="label">Bars</span>
+        <button class="btn" type="button" id="recShift" title="Move every bar line one beat later">Start one beat later</button>
+        <label class="chip"><input type="radio" name="recMeter" value="4" checked><span>4/4</span></label>
+        <label class="chip"><input type="radio" name="recMeter" value="3"><span>3/4</span></label>
+        <span class="label">Detail</span>
+        <label class="chip"><input type="radio" name="recGrid" value="0.25" checked><span>Sixteenths</span></label>
+        <label class="chip"><input type="radio" name="recGrid" value="0.5"><span>Eighths</span></label>
+      </div>
+      <div class="rec-fix" id="recSwitch">
+        <span class="label">Melody from</span>
+      </div>
+      <audio id="recAudio" controls preload="none"></audio>
+      <p class="hint">From a recording, so treat it as a first draft: play it back and check it by ear. Nothing you open leaves this device.</p>
+    </div>
+  </section>
 
   <section class="msg scan" id="scanHelp" hidden>
     <h2 id="scanTitle">Scans need one extra step</h2>

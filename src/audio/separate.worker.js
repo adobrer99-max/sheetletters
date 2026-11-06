@@ -11,8 +11,10 @@
 import { DemucsProcessor, CONSTANTS } from "demucs-web";
 
 const ORT_VERSION = "1.31.1";
-const ORT_URL = `https://cdn.jsdelivr.net/npm/onnxruntime-web@${ORT_VERSION}/dist/ort.webgpu.bundle.min.mjs`;
-export const MODEL_URL = CONSTANTS.DEFAULT_MODEL_URL; // htdemucs_embedded.onnx, ~172 MB, MIT licence
+// Where the engine and model come from. Both can be overridden (for self-hosting, or tests) with
+// ?ort=<folder>/ and ?model=<url> on the page, which the page passes along.
+let ORT_DIR = `https://cdn.jsdelivr.net/npm/onnxruntime-web@${ORT_VERSION}/dist/`;
+let MODEL_URL = CONSTANTS.DEFAULT_MODEL_URL; // htdemucs_embedded.onnx, ~172 MB, MIT licence
 const CACHE = "sheet-letters-models-v1";
 const RATE = 44100, OUT_RATE = 22050;
 const CHUNK = 60 * RATE, OVERLAP = 2 * RATE; // work through the song a minute at a time
@@ -21,8 +23,8 @@ const post = (m, transfer) => self.postMessage(m, transfer || []);
 const progress = (stage, done, total, extra = {}) => post({ type: "progress", stage, done, total, ...extra });
 
 async function loadOrt() {
-  const ort = await import(/* @vite-ignore */ ORT_URL);
-  ort.env.wasm.wasmPaths = `https://cdn.jsdelivr.net/npm/onnxruntime-web@${ORT_VERSION}/dist/`;
+  const ort = await import(/* @vite-ignore */ ORT_DIR + "ort.webgpu.bundle.min.mjs");
+  ort.env.wasm.wasmPaths = ORT_DIR;
   // more threads only work when the page is cross-origin isolated; otherwise ORT uses one
   ort.env.wasm.numThreads = self.crossOriginIsolated ? Math.min(4, navigator.hardwareConcurrency || 2) : 1;
   return ort;
@@ -49,7 +51,7 @@ async function loadModel() {
   let o = 0;
   for (const p of parts) { buf.set(p, o); o += p.length; }
   progress("model", got, got);
-  if (cache) { try { await cache.put(MODEL_URL, new Response(buf.slice().buffer, { headers: { "Content-Type": "application/octet-stream" } })); } catch { /* storage full: fine */ } }
+  if (cache) { try { await cache.put(MODEL_URL, new Response(buf, { headers: { "Content-Type": "application/octet-stream" } })); } catch { /* storage full: fine */ } }
   return buf.buffer;
 }
 
@@ -70,13 +72,25 @@ function toMono22k(left, right, from = 0, to = left.length) {
 
 let processor = null, device = "";
 
+// WebGPU only helps on a real graphics chip. A software stand-in (SwiftShader and the like) is far
+// slower than plain WebAssembly and eats memory, so treat it as no GPU.
+async function realGpu() {
+  try {
+    const adapter = self.navigator.gpu && (await self.navigator.gpu.requestAdapter());
+    if (!adapter) return false;
+    const info = adapter.info || (adapter.requestAdapterInfo ? await adapter.requestAdapterInfo() : {});
+    if (adapter.isFallbackAdapter || info.isFallbackAdapter) return false;
+    return !/swiftshader|llvmpipe|software/i.test(`${info.vendor} ${info.architecture} ${info.device} ${info.description}`);
+  } catch { return false; }
+}
+
 async function separate(left, right) {
   if (!processor) {
     progress("engine", 0, 1);
     const ort = await loadOrt();
     const model = await loadModel();
     progress("engine", 0, 1);
-    const hasGpu = !!self.navigator.gpu && !!(await self.navigator.gpu.requestAdapter().catch(() => null));
+    const hasGpu = await realGpu();
     processor = new DemucsProcessor({ ort, sessionOptions: { executionProviders: hasGpu ? ["webgpu", "wasm"] : ["wasm"] } });
     await processor.loadModel(model);
     device = hasGpu ? "webgpu" : "wasm";
@@ -109,6 +123,8 @@ async function separate(left, right) {
 
 self.onmessage = async (e) => {
   const m = e.data;
+  if (m.ortDir) ORT_DIR = m.ortDir;
+  if (m.modelUrl) MODEL_URL = m.modelUrl;
   try {
     if (m.type === "separate") await separate(m.left, m.right);
     if (m.type === "warm") { if (!processor) { await loadOrt(); await loadModel(); } post({ type: "warm" }); }
