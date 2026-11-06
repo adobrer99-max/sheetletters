@@ -152,6 +152,14 @@ const player = (() => {
         const q = st.q + e.t;
         if (q < fromQ - EPS) continue;
         const vel = base / Math.sqrt(Math.max(1, e.notes.length * 0.6));
+        // grace notes: quick and light, just before the beat, so the main note still lands on it
+        if (e.grace?.length) {
+          const g = e.grace.length, step = Math.min(0.07, (0.25 / P.qps) / g);
+          e.grace.forEach((n, k) => {
+            const t0 = at(q) - (g - k) * step;
+            if (t0 > ctx.currentTime) strike(n.midi, t0, t0 + step * 0.95, vel * 0.7);
+          });
+        }
         for (const n of e.notes) {
           const key = r.id + ":" + n.midi;
           const prev = held.get(key);

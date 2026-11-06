@@ -39,6 +39,7 @@ function parseMusicXML(text) {
     [...part.querySelectorAll(":scope > measure")].forEach((mEl, idx) => {
       const m = measures[idx] || (measures[idx] = { number: mEl.getAttribute("number") || String(idx + 1), len: 0, timeLen: 4, rows: {} });
       let pos = 0, maxPos = 0, lastOnset = 0;
+      const pendingGrace = {}, tupGroup = {};
       for (const el of mEl.children) {
         switch (el.nodeName) {
           case "attributes": {
@@ -61,21 +62,29 @@ function parseMusicXML(text) {
             // one pass over the note's children: notes are most of a file, and repeated selector
             // lookups on each one were the slowest part of opening a big score
             let grace = false, isChord = false, durTxt = "", rest = false, pitch = null, held = false, staffTxt = "", ly = null;
+            let tupN = 0, tupStart = false, tupStop = false;
             for (const c of el.children) {
               switch (c.nodeName) {
-                case "grace": case "cue": grace = true; break;
+                case "grace": grace = true; break;
+                case "cue": grace = "cue"; break;
+                case "time-modification": for (const t of c.children) if (t.nodeName === "actual-notes") tupN = parseInt(t.textContent, 10) || 0; break;
                 case "chord": isChord = true; break;
                 case "duration": durTxt = c.textContent.trim(); break;
                 case "rest": rest = true; break;
                 case "pitch": pitch = c; break;
                 case "tie": if (c.getAttribute("type") === "stop") held = true; break;
-                case "notations": for (const t of c.children) if (t.nodeName === "tied" && t.getAttribute("type") === "stop") held = true; break;
+                case "notations":
+                  for (const t of c.children) {
+                    if (t.nodeName === "tied" && t.getAttribute("type") === "stop") held = true;
+                    if (t.nodeName === "tuplet") { if (t.getAttribute("type") === "start") tupStart = true; if (t.getAttribute("type") === "stop") tupStop = true; }
+                  }
+                  break;
                 case "staff": staffTxt = c.textContent.trim(); break;
                 case "lyric": if (!ly) ly = c; break;
               }
             }
-            if (grace) break;
-            const dur = (durTxt === "" ? 0 : parseFloat(durTxt)) / divisions;
+            if (grace === "cue") break; // cue notes are other players' parts, printed small: not ours to play
+            const dur = grace ? 0 : (durTxt === "" ? 0 : parseFloat(durTxt)) / divisions;
             const onset = isChord ? lastOnset : pos;
             if (!isChord) { lastOnset = pos; pos += dur; }
             maxPos = Math.max(maxPos, onset + dur);
@@ -89,8 +98,22 @@ function parseMusicXML(text) {
             if (!(step in STEP_SEMI)) break;
             const alter = Math.round(alterTxt === "" ? 0 : parseFloat(alterTxt)), octave = octTxt === "" ? 4 : parseFloat(octTxt);
             const rid = rowFor((staffTxt === "" ? 1 : parseFloat(staffTxt)) || 1);
+            const note = { step, alter, octave, midi: midiOf(step, alter, octave), held };
+            // grace notes take no time: they wait to be attached to the next real note on the staff
+            if (grace) { (pendingGrace[rid] ||= []).push(note); break; }
             const events = m.rows[rid] || (m.rows[rid] = []);
-            const ev = addNote(events, onset, dur, { step, alter, octave, midi: midiOf(step, alter, octave), held });
+            const ev = addNote(events, onset, dur, note);
+            if (pendingGrace[rid]) { ev.grace = (ev.grace || []).concat(pendingGrace[rid]); delete pendingGrace[rid]; }
+            // triplets and other tuplets: mark where each group starts and ends (files that only give
+            // the timing get counted into groups of N)
+            if (tupN > 1 && !isChord) {
+              // a group opened by the file's own mark closes at its stop mark; one without marks closes after N notes
+              const g = tupGroup[rid];
+              if (tupStart || !g || (!g.marked && g.count >= tupN)) { ev.tupStart = tupN; tupGroup[rid] = { count: 0, marked: tupStart }; }
+              const cur = tupGroup[rid];
+              cur.count++;
+              if (tupStop || (!cur.marked && cur.count >= tupN)) { ev.tupEnd = true; delete tupGroup[rid]; }
+            } else if (!isChord && tupGroup[rid]) { const evs = m.rows[rid]; const prev = evs[evs.length - 2]; if (prev) prev.tupEnd = true; delete tupGroup[rid]; }
             if (ly && !ev.lyric) {
               let text = "", syl = "";
               for (const c of ly.children) { if (c.nodeName === "text" && !text) text = c.textContent.trim(); else if (c.nodeName === "syllabic" && !syl) syl = c.textContent.trim(); }

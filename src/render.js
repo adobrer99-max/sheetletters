@@ -22,6 +22,29 @@ function noteHTML(n) {
   const pre = x.pre ? `<span class="acc pre">${x.pre}</span>` : "";
   return `<span class="note${n.held ? " held" : ""}${x.text.length > 1 ? " word" : ""}" data-l="${n.step}">${pre}${x.text}${x.acc ? `<span class="acc">${x.acc}</span>` : ""}${oct}</span>`;
 }
+// what goes inside one event: its notes top to bottom, with any grace notes hanging off the top one
+function graceHTML(g) {
+  return `<span class="graces" title="Grace note${g.length > 1 ? "s" : ""}: play quickly, just before">${g.map((n) => { const x = noteName(n, opts.names || "letters", nameKey.fifths, nameKey.minor); return (x.pre || "") + x.text + x.acc; }).join("")}</span>`;
+}
+function evInner(e) {
+  if (e.rest) return `<span class="rest" title="rest">–</span>`;
+  return e.notes.map((n, i) => (i === 0 && e.grace?.length ? `<span class="gwrap">${graceHTML(e.grace)}${noteHTML(n)}</span>` : noteHTML(n))).join("");
+}
+// triplet (and other tuplet) brackets in a row, from where each group starts to where it ends
+function tupletHTML(evs, len) {
+  const out = [];
+  let open = null;
+  for (const e of evs) {
+    if (e.tupStart) open = { n: e.tupStart, t: e.t };
+    if (open && (e.tupEnd || e === evs[evs.length - 1])) {
+      const end = e.t + e.d;
+      out.push(`<span class="tup" style="left:${(open.t / len * 100).toFixed(2)}%;width:${(((end - open.t) / len) * 100).toFixed(2)}%" title="${open.n} notes in the time of ${open.n === 3 ? 2 : open.n - 1}"><i>${open.n}</i></span>`);
+      open = null;
+    }
+  }
+  return out.join("");
+}
+
 function lyricText(l) { return l.text + (l.syllabic === "begin" || l.syllabic === "middle" ? "-" : ""); }
 
 function renderFacts() {
@@ -72,7 +95,7 @@ function relabel() {
       const e = m.rows[rows[+ev.dataset.r]?.id]?.[+ev.dataset.i];
       if (!e) return false;
       const lyric = ev.querySelector(".lyric");
-      ev.innerHTML = e.notes.map(noteHTML).join("");
+      ev.innerHTML = evInner(e);
       if (lyric) ev.appendChild(lyric);
     }
     const chords = el.querySelectorAll(".chord");
@@ -100,7 +123,8 @@ function measureWidth(m, visibleRows, showLyrics, showChords) {
   const lyricRoom = showLyrics ? Math.max(0, ...visibleRows.map((evs) => evs.reduce((w, e) => w + (e.lyric ? Math.max(1.6, lyricText(e.lyric).length * 0.42 + 0.6) : 1.6), 0))) : 0;
   const chordRoom = showChords ? m.chords.reduce((w, c) => w + c.label.length * 0.62 + 0.8, 0) : 0;
   const wide = NAME_WIDTH[opts.names] || 1; // Do-Re-Mi syllables need more room than single letters
-  return Math.min(Math.max(m.len / shortest * (showLyrics ? 2.6 : 2) * Math.sqrt(wide), count * 2.1 * wide, lyricRoom, chordRoom, 3.5), 40);
+  const graceRoom = visibleRows.reduce((w, evs) => Math.max(w, evs.reduce((g, e) => g + (e.grace?.length || 0) * 0.55, 0)), 0);
+  return Math.min(Math.max(m.len / shortest * (showLyrics ? 2.6 : 2) * Math.sqrt(wide), count * 2.1 * wide + graceRoom, lyricRoom, chordRoom, 3.5), 40);
 }
 function render() {
   const s = state.score;
@@ -129,7 +153,7 @@ function render() {
     if (m.repStart) cls.push("rep-start");
     if (m.repEnd) cls.push("rep-end");
     if (m.final) cls.push("final");
-    const head = [`<button class="mnum" type="button" data-mi="${mi}" title="Play from measure ${esc(m.number)}" aria-label="Play from measure ${esc(m.number)}">${esc(m.number)}</button>`];
+    const head = [`<button class="mnum" type="button" data-mi="${mi}" title="${m.pickup ? "Pickup bar, before bar 1. " : ""}Play from measure ${esc(m.number)}" aria-label="Play from measure ${esc(m.number)}">${esc(m.number)}</button>`];
     if (m.key !== undefined && m !== s.measures[0]) head.push(`<span class="chg" data-key title="Key change: ${keyName(m.key)}">→ ${keyLabel(m.key, m.mode || s.keyInfo.mode)}</span>`);
     if (m.time) head.push(`<span class="chg" title="Time signature">${m.time}</span>`);
     if (m.ending) head.push(`<span class="rep">${esc(m.ending)}.</span>`);
@@ -143,11 +167,12 @@ function render() {
       const style = opts.compact ? "" : ` style="height:${(tall * 1.2 + (showLyrics ? 1.15 : 0)).toFixed(2)}em"`;
       const items = evs.map((e, ei) => {
         const pos = opts.compact ? "" : ` style="left:${(e.t / m.len * 100).toFixed(2)}%"`;
-        const inner = e.rest ? `<span class="rest" title="rest">–</span>` : e.notes.map(noteHTML).join("");
+        const inner = evInner(e);
         const lyric = showLyrics && e.lyric ? `<span class="lyric">${esc(lyricText(e.lyric))}</span>` : "";
         return `<div class="ev"${pos}${e.rest ? "" : ` data-t="${e.t}" data-d="${e.d}" data-r="${ri}" data-i="${ei}"`}>${inner}${opts.compact ? lyric : ""}</div>` + (opts.compact ? "" : lyric.replace('class="lyric"', `class="lyric" style="left:${(e.t / m.len * 100).toFixed(2)}%"`));
       }).join("");
-      return `<div class="row${opts.compact ? " compact" : ""}"${style}>${items}</div>`;
+      const tups = opts.compact ? "" : tupletHTML(evs, m.len);
+      return `<div class="row${opts.compact ? " compact" : ""}${tups ? " has-tup" : ""}"${style}>${tups}${items}</div>`;
     }).join("");
     html.push(`<div class="${cls.join(" ")}" data-mi="${mi}"${width ? ` style="width:${width.toFixed(1)}em"` : ""}><div class="mhead">${head.join("")}</div>${body}</div>`);
   });
@@ -168,7 +193,9 @@ function toText() {
   out.push(`Key: ${keyLabel(ki.fifths, ki.mode)}${ki.guessed ? " (likely)" : ""}, ${keyName(ki.fifths)}` + (s.measures[0].time ? `   Time: ${s.measures[0].time}` : ""));
   if (state.transpose) out.push(`Transposed ${semiText(state.transpose)} from ${keyLabel(state.original.keyInfo.fifths, state.original.keyInfo.mode)}`);
   const showChords = opts.chords && s.hasChords;
-  out.push("[ ] = play together   ~ = keep holding (tied)   _ = rest   | = bar line", "");
+  const hasGrace = s.measures.some((m) => Object.values(m.rows).some((evs) => evs.some((e) => e.grace?.length)));
+  const hasTup = s.measures.some((m) => Object.values(m.rows).some((evs) => evs.some((e) => e.tupStart)));
+  out.push("[ ] = play together   ~ = keep holding (tied)   _ = rest   | = bar line" + (hasGrace ? "   ( ) = grace note, quick and just before" : "") + (hasTup ? "   3: = a triplet starts (3 notes in the time of 2)" : ""), "");
   const PER_LINE = 4;
   const keys = keysByMeasure(s), naming = opts.names || "letters";
   for (let i = 0; i < s.measures.length; i += PER_LINE) {
@@ -190,6 +217,8 @@ function toText() {
       for (const [k, e] of evs.entries()) {
         let tok = e.rest ? "_" : [...e.notes].reverse().map((n) => (n.held ? "~" : "") + nameText(n, naming, key.fifths, key.minor) + (opts.octave ? n.octave : "")).join(" ");
         if (e.notes.length > 1) tok = `[${tok}]`;
+        if (e.grace?.length) tok = `(${e.grace.map((g) => nameText(g, naming, key.fifths, key.minor)).join(" ")})` + tok;
+        if (e.tupStart) tok = `${e.tupStart}:` + tok;
         const ly = e.lyric ? lyricText(e.lyric) : "";
         const ch = chordAt.get(k) || "";
         const w = Math.max(tok.length, ly.length, ch.length) + 1;

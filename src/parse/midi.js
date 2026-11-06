@@ -117,8 +117,29 @@ function parseMIDI(buf) {
       if (ev) { ev.lyric = { text, syllabic }; break; }
     }
   }
+  pickupBar(measures);
   // MIDI files often leave the major/minor flag at its default, so only a "minor" flag counts as stated
   return { title: songTitle, composer: "", format: "MIDI", rows, measures, mode: keySigs[0]?.minor ? "minor" : null, tempo: tempoUs ? 60e6 / tempoUs : 120 };
 }
 
-export { parseMIDI };
+/** MIDI files can't say "this song starts with a pickup", so a tune starting on the last beat
+ *  shows up as a mostly empty first bar. When nothing plays for at least a whole beat at the start,
+ *  shorten bar 1 to just the part that's played, as sheet music writes it: a short "bar 0" before
+ *  bar 1. Records how much was cut (in quarter notes) as m.pickupCut, for anything placed later. */
+function pickupBar(measures) {
+  const m = measures[0];
+  if (!m || measures.length < 2) return;
+  const evs = Object.values(m.rows).flat();
+  if (!evs.length) return;
+  const first = Math.min(...evs.map((e) => e.t));
+  const beat = 4 / (m.beatType || 4);
+  const cut = Math.floor((first + EPS) / beat) * beat;
+  if (cut < beat - EPS || cut >= m.len - EPS) return;
+  for (const evs2 of Object.values(m.rows)) for (const e of evs2) e.t -= cut;
+  m.len -= cut;
+  m.pickupCut = cut;
+  m.pickup = true;
+  measures.forEach((x, i) => { x.number = String(i); }); // the pickup is bar 0, the first full bar is 1
+}
+
+export { parseMIDI, pickupBar };

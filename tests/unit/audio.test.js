@@ -147,3 +147,18 @@ describe("chords and key from a recording", () => {
     expect(estimateKey(prof([4, 8, 11, 6, 9, 1, 3]))).toMatchObject({ fifths: 4, minor: false });
   });
 });
+
+import { isAudioFile } from "../../src/audio/pipeline.js";
+describe("telling recordings from sheet music", () => {
+  const u8 = (s) => new TextEncoder().encode(s.padEnd(12, " "));
+  it("MIDI files are sheet music, even labelled audio/midi", () => {
+    expect(isAudioFile({ name: "song.mid", type: "audio/midi" }, "MThd", u8("MThd"))).toBe(false);
+    expect(isAudioFile({ name: "song.kar", type: "audio/x-midi" }, "MThd", u8("MThd"))).toBe(false);
+    expect(isAudioFile({ name: "old.rmi", type: "" }, "RIFF", u8("RIFF....RMID"))).toBe(false);
+  });
+  it("recordings are recordings", () => {
+    expect(isAudioFile({ name: "take.wav", type: "audio/wav" }, "RIFF", u8("RIFF....WAVE"))).toBe(true);
+    expect(isAudioFile({ name: "song.mp3", type: "audio/mpeg" }, "ID3\u0003", u8("ID3"))).toBe(true);
+    expect(isAudioFile({ name: "voice memo", type: "audio/mp4" }, "\0\0\0 ", u8("    ftyp"))).toBe(true);
+  });
+});

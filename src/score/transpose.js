@@ -24,6 +24,7 @@ function transposeScore(src, semis) {
     if (m.key !== undefined) m.key = newF;
     for (const evs of Object.values(m.rows)) for (const e of evs) {
       e.notes = e.notes.map((n) => ({ ...n, ...shiftPitch(n.step, n.alter, n.midi, shift, semis) }));
+      if (e.grace) e.grace = e.grace.map((n) => ({ ...n, ...shiftPitch(n.step, n.alter, n.midi, shift, semis) }));
     }
     const movePc = (x) => { const r = shiftPitch(x.step, x.alter, midiOf(x.step, x.alter, 4), shift, semis); return { step: r.step, alter: r.alter }; };
     for (const c of m.chords) {

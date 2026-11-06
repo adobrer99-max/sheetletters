@@ -87,3 +87,21 @@ test("printing shows just the song", async ({ page }) => {
   await expect(page.locator(".measure")).toHaveCount(12);
   await expect(page.locator(".print-credit")).toBeVisible();
 });
+
+test("MIDI files open as sheet music, with a pickup bar when the tune starts late", async ({ page }) => {
+  await page.setInputFiles("#fileInput", "tests/fixtures/pickup.mid");
+  await expect(page.locator("#recPanel")).toBeHidden();
+  await expect(page.locator(".measure").first().locator(".mnum")).toHaveText("0");
+  await expect(page.locator(".measure").nth(1).locator(".mnum")).toHaveText("1");
+});
+
+test("grace notes and triplets are shown and copied", async ({ page }) => {
+  await page.setInputFiles("#fileInput", "tests/fixtures/grace-triplets.musicxml");
+  await expect(page.locator(".graces")).toHaveCount(2);
+  await expect(page.locator(".tup")).toHaveCount(3);
+  const text = await page.evaluate(() => window.SheetLetters.toText());
+  expect(text).toContain("(D)C");
+  expect(text).toContain("3:E");
+  await page.click("#playBtn");
+  await expect(page.locator(".ev.on").first()).toBeVisible({ timeout: 10_000 });
+});

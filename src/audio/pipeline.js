@@ -20,6 +20,8 @@ const AUDIO_EXT = /^(wav|wave|mp3|m4a|aac|mp4|flac|ogg|oga|opus|webm|aif|aiff|ca
 /** Is this file a recording rather than sheet music? */
 export function isAudioFile(file, head4 = "", u8) {
   const ext = ((file.name || "").match(/\.([^.]+)$/) || [, ""])[1].toLowerCase();
+  // MIDI is sheet music, not a recording, even though browsers label it audio/midi
+  if (head4 === "MThd" || /^(mid|midi|kar|rmi|smf)$/.test(ext) || /midi/i.test(file.type || "")) return false;
   if (head4 === "RIFF" && u8) return String.fromCharCode(...u8.subarray(8, 12)) === "WAVE"; // .wav, not RIFF-wrapped MIDI
   return AUDIO_EXT.test(ext) || /^audio\//.test(file.type || "");
 }
@@ -195,6 +197,14 @@ export class RecordingImport {
     if (perBeat) {
       const placed = placeChords(perBeat, { origin, perBar: s.perBar, measures: score.measures.length, fifths: key.fifths });
       score.measures.forEach((m, i) => { m.harmony = placed[i]; });
+      // a trimmed pickup bar moved its notes earlier: move its chords the same way, keeping the one
+      // already sounding when the bar now starts
+      const m0 = score.measures[0], cut = m0.pickupCut || 0;
+      if (cut && m0.harmony.length) {
+        const moved = m0.harmony.map((c) => ({ ...c, t: c.t - cut }));
+        const before = moved.filter((c) => c.t <= 1e-6).pop();
+        m0.harmony = (before ? [{ ...before, t: 0 }] : []).concat(moved.filter((c) => c.t > 1e-6));
+      }
       score.chordsHeard = placed.some((c) => c.length);
     }
     score.title = name;
