@@ -21,10 +21,10 @@ Live at **[adamdobrer.ca/projects/sheet-letters](https://adamdobrer.ca/projects/
 
 ## Song library and links
 
-23 public-domain songs to try, grouped by level: **first songs** (Twinkle, Mary Had a Little Lamb, Hot
+26 public-domain songs to try, grouped by level: **first songs** (Twinkle, Mary Had a Little Lamb, Hot
 Cross Buns, Row Row Row Your Boat, Old MacDonald, Happy Birthday), **folk songs** (Frère Jacques, London
-Bridge, Yankee Doodle, Au clair de la lune, Lightly Row, Greensleeves), **holidays** (Jingle Bells, Silent
-Night, We Wish You a Merry Christmas, Good King Wenceslas, Deck the Halls) and **classical** (Ode to Joy,
+Bridge, Yankee Doodle, Au clair de la lune, Lightly Row, Greensleeves, Amazing Grace, Oh! Susanna), **holidays**
+(Jingle Bells, Silent Night, We Wish You a Merry Christmas, Good King Wenceslas, Deck the Halls, Auld Lang Syne) and **classical** (Ode to Joy,
 Für Elise, Minuet in G, Canon in D, In the Hall of the Mountain King, Bach's Prelude in C), with chords and,
 for the sung ones, lyrics. They're written in a compact shorthand in `tools/songs.py`, which checks every bar
 adds up and writes the MusicXML: `python3 tools/songs.py`.
@@ -49,10 +49,11 @@ the share sheet on a phone).
 
 ## Fixing notes
 
-**Fix notes** turns on editing: tap any note, then make it higher or lower (or an octave), move it earlier or
+**Fix notes** turns on editing: tap any note (or **Select several**, then tap the last one, to work on a
+whole phrase), then make it higher or lower (or an octave), move it earlier or
 later, make it shorter or longer, delete it, or add a note after it. Each change plays the note, and **Undo**
 steps back. On a keyboard: ↑ ↓ change the pitch (with Shift, an octave), ← → go to the previous or next note,
-Delete removes it, Ctrl/Cmd+Z undoes, Esc lets go. Changes stay through transposing, melody only and playing,
+Shift+← → add notes to the selection, Shift+click picks a run, Delete removes, Ctrl/Cmd+Z undoes, Esc lets go. Changes stay through transposing, melody only and playing,
 and **Save MusicXML** or **Save MIDI** keeps them. Most useful after opening a recording.
 
 ## How a recording becomes letters

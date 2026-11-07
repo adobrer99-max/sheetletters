@@ -105,6 +105,27 @@
   "time": "3/4"
  },
  {
+  "slug": "amazing-grace",
+  "level": "Folk songs",
+  "title": "Amazing Grace",
+  "composer": "Tune New Britain (1829), words John Newton (1779)",
+  "time": "3/4"
+ },
+ {
+  "slug": "oh-susanna",
+  "level": "Folk songs",
+  "title": "Oh! Susanna",
+  "composer": "Stephen Foster (1848)",
+  "time": "2/4"
+ },
+ {
+  "slug": "auld-lang-syne",
+  "level": "Holidays",
+  "title": "Auld Lang Syne",
+  "composer": "Traditional Scottish, words Robert Burns (1788)",
+  "time": "4/4"
+ },
+ {
   "slug": "silent-night",
   "level": "Holidays",
   "title": "Silent Night",

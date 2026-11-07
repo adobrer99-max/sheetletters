@@ -45,7 +45,10 @@ function sounding(s) {
     }
     at += m.len;
   }
-  return out.map((n) => n.map(r).join(" ")).sort();
+  // counted from the first note: a MIDI file can't say how long a pickup bar is, so the reader may
+  // give a short pickup a little lead-in rest, which moves everything along without changing the tune
+  const t0 = Math.min(...out.map((n) => n[0]));
+  return out.map((n) => [n[0] - t0, n[1], n[2]].map(r).join(" ")).sort();
 }
 
 describe("note values", () => {

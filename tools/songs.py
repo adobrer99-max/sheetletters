@@ -7,6 +7,7 @@ Shorthand, one string per bar, tokens separated by spaces:
     E4/q        a note: pitch (C..B, # or b, octave) / length: w h q e s, with "." for dotted
     r/e         a rest
     E4/q:Twin-  a note with a lyric syllable; a trailing "-" means the word carries on
+    D5/h.~      a note tied to the next note of the same pitch (keep holding it)
     [C] [G7]    a chord symbol at the next note's position
 A bar that starts with "pickup" is a short opening bar. Every other bar must add up to the time
 signature exactly: the script stops with an error if one doesn't, which catches rhythm slips.
@@ -98,6 +99,27 @@ SONGS = [
         "[Am] C5/h D5/q", "[C] E5/q. F5/e E5/q", "[G] D5/h B4/q", "[Em] G4/q. A4/e B4/q",
         "[Am] C5/q. B4/e A4/q", "[E] G#4/q. F#4/e G#4/q", "[Am] A4/h.", "[Am] A4/h.",
     ]),
+    dict(slug="amazing-grace", level="Folk songs", title="Amazing Grace", composer="Tune New Britain (1829), words John Newton (1779)", fifths=1, time=(3, 4), tempo=84, bars=[
+        "pickup D4/q:A-",
+        "[G] G4/h:maz- B4/e:ing G4/e", "[G] B4/h:grace! [D7] A4/q:How", "[Em] G4/h:sweet [C] E4/q:the", "[G] D4/h:sound D4/q:that",
+        "[G] G4/h:saved B4/e:a G4/e", "[G] B4/h:wretch [D7] A4/e:like B4/e", "[D] D5/h.~:me!", "[D] D5/q r/q B4/q:I",
+        "[G] D5/h:once B4/e:was G4/e", "[G] B4/h:lost, A4/q:but", "[C] G4/h:now E4/q:am", "[G] D4/h:found, D4/q:was",
+        "[Em] G4/h:blind B4/e:but G4/e", "[D] B4/h:now A4/q:I", "[G] G4/h.:see.",
+    ]),
+    dict(slug="oh-susanna", level="Folk songs", title="Oh! Susanna", composer="Stephen Foster (1848)", fifths=2, time=(2, 4), tempo=100, bars=[
+        "pickup D4/s E4/s",
+        "[D] F#4/e A4/e A4/e B4/e", "[D] A4/e F#4/e D4/e. E4/s", "[D] F#4/e F#4/e E4/e D4/e", "[A] E4/q. D4/s E4/s",
+        "[D] F#4/e A4/e A4/e B4/e", "[D] A4/e F#4/e D4/e E4/e", "[A7] F#4/e F#4/e E4/e E4/e", "[D] D4/q. r/e",
+        "[G] G4/q G4/q", "[G] B4/e B4/q B4/e", "[D] A4/e A4/e F#4/e D4/e", "[A] E4/q. D4/s E4/s",
+        "[D] F#4/e A4/e A4/e B4/e", "[D] A4/e F#4/e D4/e E4/e", "[A7] F#4/e F#4/e E4/e E4/e", "[D] D4/q. r/e",
+    ]),
+    dict(slug="auld-lang-syne", level="Holidays", title="Auld Lang Syne", composer="Traditional Scottish, words Robert Burns (1788)", fifths=-1, time=(4, 4), tempo=88, bars=[
+        "pickup C4/q",
+        "[F] F4/q. F4/e F4/q A4/q", "[C] G4/q. F4/e G4/q r/e A4/e", "[F] F4/e F4/q. A4/q C5/q", "[Bb] D5/h. F5/q",
+        "[F] C5/q. A4/e A4/q F4/q", "[C] G4/q. F4/e G4/q r/e A4/e", "[Dm] F4/q. D4/e [Bb] D4/q C4/q", "[F] F4/h. F5/q",
+        "[F] C5/e A4/q. A4/q. F4/e", "[C] G4/q. F4/e G4/q r/e A4/e", "[F] C5/e A4/q. A4/q. C5/e", "[Bb] D5/h. F5/q",
+        "[F] C5/q A4/q A4/q F4/q", "[C] G4/q. F4/e G4/q r/e A4/e", "[Dm] F4/e D4/q. [Bb] D4/q. C4/e", "[F] F4/h. r/q",
+    ]),
     # ---- holidays ----
     dict(slug="silent-night", level="Holidays", title="Silent Night", composer="Franz Xaver Gruber (1818)", fifths=0, time=(3, 4), tempo=88, bars=[
         "[C] G4/q.:Si- A4/e G4/q:lent", "[C] E4/h.:night,", "[C] G4/q.:ho- A4/e G4/q:ly", "[C] E4/h.:night,",
@@ -165,7 +187,7 @@ def chord_xml(sym):
 def song_xml(song):
     beats, beat_type = song["time"]
     bar_len = F(beats * 4, beat_type)
-    out, carry = [], False
+    out, carry, tied = [], False, set()
     for i, bar in enumerate(song["bars"]):
         toks = bar.split()
         pickup = toks and toks[0] == "pickup"
@@ -177,7 +199,8 @@ def song_xml(song):
                 parts.append(chord_xml(t.strip("[]"))); continue
             body, _, lyric = t.partition(":")
             p, l = body.split("/")
-            d, base, dotted = length(l)
+            tie_start = l.endswith("~")
+            d, base, dotted = length(l.rstrip("~"))
             total += d
             dur = int(d * DIV)
             typ = TYPE[LEN[base]] if base in LEN else "quarter"
@@ -194,7 +217,14 @@ def song_xml(song):
                 syl = ("middle" if carry else "begin") if cont else ("end" if carry else "single")
                 carry = cont
                 ly = f"<lyric number=\"1\"><syllabic>{syl}</syllabic><text>{escape(text)}</text></lyric>"
-            parts.append(f"<note><pitch><step>{step}</step>{a}<octave>{octave}</octave></pitch><duration>{dur}</duration><type>{typ}</type>{dot}{acc}{ly}</note>")
+            tie_stop = p in tied
+            tied.discard(p)
+            if tie_start: tied.add(p)
+            ties = ('<tie type="stop"/>' if tie_stop else "") + ('<tie type="start"/>' if tie_start else "")
+            nots = ('<tied type="stop"/>' if tie_stop else "") + ('<tied type="start"/>' if tie_start else "")
+            nots = f"<notations>{nots}</notations>" if nots else ""
+            if tie_stop: acc = ""
+            parts.append(f"<note><pitch><step>{step}</step>{a}<octave>{octave}</octave></pitch><duration>{dur}</duration>{ties}<type>{typ}</type>{dot}{acc}{nots}{ly}</note>")
         if not pickup and total != bar_len:
             sys.exit(f"{song['slug']} bar {number}: adds up to {total} quarter notes, should be {bar_len}")
         attrs = ""
