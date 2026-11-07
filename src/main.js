@@ -2,6 +2,7 @@ import { openFromLinkOr } from "./library.js";
 import { NAMINGS } from "./score/names.js";
 import "./styles.css";
 import "./links.js";
+import "./save.js";
 import { loadExample, loadFile } from "./load.js";
 import { parseMIDI } from "./parse/midi.js";
 import { parseMusicXML } from "./parse/musicxml.js";

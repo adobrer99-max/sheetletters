@@ -95,11 +95,18 @@ function parseMIDI(buf) {
     const id = `r${i}`;
     for (const n of r.notes) {
       const s = q(n.start), e = Math.max(q(n.end), s + grid);
-      const m = measures[locate(s)];
-      const t = (s - m.start) / ppq, d = Math.min((e - s) / ppq, m.len - t);
-      const [step, alter] = (m.fifths < 0 ? FLAT_SPELL : SHARP_SPELL)[n.pitch % 12];
-      const octave = Math.floor((n.pitch - alter) / 12) - 1;
-      addNote(m.rows[id] || (m.rows[id] = []), t, Math.max(d, 1 / 12), { step, alter, octave, midi: n.pitch, held: false });
+      // a note that rings across a bar line carries on into the next bar as a held (tied) note
+      let mi = locate(s), from = s, held = false;
+      while (mi < measures.length) {
+        const m = measures[mi];
+        const t = (from - m.start) / ppq, d = Math.min((e - from) / ppq, m.len - t);
+        const [step, alter] = (m.fifths < 0 ? FLAT_SPELL : SHARP_SPELL)[n.pitch % 12];
+        const octave = Math.floor((n.pitch - alter) / 12) - 1;
+        addNote(m.rows[id] || (m.rows[id] = []), t, Math.max(d, 1 / 12), { step, alter, octave, midi: n.pitch, held });
+        const next = measures[mi + 1];
+        if (!next || e <= next.start + grid / 2) break;
+        from = next.start; held = true; mi++;
+      }
     }
     return { id, name: r.name, track: r.track };
   });

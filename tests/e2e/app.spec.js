@@ -147,3 +147,21 @@ test("melody only keeps the top note of each chord", async ({ page }) => {
   await toggle();
   expect(await notes()).toBe(before);
 });
+
+test("save as MusicXML and MIDI, in the key shown, and open the saved file again", async ({ page }) => {
+  await page.selectOption("#libSelect", "ode-to-joy");
+  await expect(page.locator("#songTitle")).toContainText("Ode to Joy");
+  await page.click("#transUp"); await page.click("#transUp");
+  const [xml] = await Promise.all([page.waitForEvent("download"), page.click("#saveXmlBtn")]);
+  expect(xml.suggestedFilename()).toBe("Ode to Joy (in D major).musicxml");
+  const text = await (await xml.createReadStream()).toArray().then((c) => Buffer.concat(c).toString());
+  expect(text).toContain("<fifths>2</fifths>");
+  const [mid] = await Promise.all([page.waitForEvent("download"), page.click("#saveMidiBtn")]);
+  expect(mid.suggestedFilename()).toMatch(/\.mid$/);
+  const bytes = await (await mid.createReadStream()).toArray().then((c) => Buffer.concat(c));
+  expect(bytes.subarray(0, 4).toString()).toBe("MThd");
+  // the saved MusicXML opens with the same first notes
+  await page.setInputFiles("#fileInput", { name: "saved.musicxml", mimeType: "application/xml", buffer: Buffer.from(text) });
+  await expect(page.locator("#facts")).toContainText("D major");
+  await expect(page.locator(".measure").first().locator(".ev").first()).toContainText(/F[#♯]/);
+});
