@@ -1,0 +1,50 @@
+[
+ {
+  "slug": "twinkle",
+  "title": "Twinkle, Twinkle, Little Star",
+  "composer": "Traditional",
+  "time": "4/4"
+ },
+ {
+  "slug": "mary-had-a-little-lamb",
+  "title": "Mary Had a Little Lamb",
+  "composer": "Lowell Mason (1830)",
+  "time": "4/4"
+ },
+ {
+  "slug": "frere-jacques",
+  "title": "Frère Jacques (Are You Sleeping?)",
+  "composer": "Traditional",
+  "time": "4/4"
+ },
+ {
+  "slug": "row-row-row-your-boat",
+  "title": "Row, Row, Row Your Boat",
+  "composer": "Traditional (1852)",
+  "time": "6/8"
+ },
+ {
+  "slug": "ode-to-joy",
+  "title": "Ode to Joy",
+  "composer": "Ludwig van Beethoven (1824)",
+  "time": "4/4"
+ },
+ {
+  "slug": "jingle-bells",
+  "title": "Jingle Bells (chorus)",
+  "composer": "James Lord Pierpont (1857)",
+  "time": "4/4"
+ },
+ {
+  "slug": "happy-birthday",
+  "title": "Happy Birthday to You",
+  "composer": "Mildred J. Hill & Patty Smith Hill",
+  "time": "3/4"
+ },
+ {
+  "slug": "fur-elise",
+  "title": "Für Elise (opening)",
+  "composer": "Ludwig van Beethoven (1810)",
+  "time": "3/8"
+ }
+]

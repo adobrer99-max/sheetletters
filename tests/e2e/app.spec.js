@@ -105,3 +105,45 @@ test("grace notes and triplets are shown and copied", async ({ page }) => {
   await page.click("#playBtn");
   await expect(page.locator(".ev.on").first()).toBeVisible({ timeout: 10_000 });
 });
+
+test("song library: pick a song, and the address bar becomes its link", async ({ page }) => {
+  await page.selectOption("#libSelect", "ode-to-joy");
+  await expect(page.locator("#songTitle")).toHaveText("Ode to Joy");
+  await expect(page.locator("#exampleTag")).toHaveText("From the song library");
+  await expect(page).toHaveURL(/#song=ode-to-joy$/);
+  await page.click("#transUp"); await page.click("#transUp");
+  await page.selectOption("#optNames", "fixed");
+  await expect(page).toHaveURL(/#song=ode-to-joy&key=2&names=fixed$/);
+  await expect(page.locator("#shareBtn")).toBeVisible();
+});
+
+test("a shared link opens the song with its key and note names", async ({ page }) => {
+  await page.goto("./#song=happy-birthday&key=-2&names=numbers");
+  await expect(page.locator("#songTitle")).toHaveText("Happy Birthday to You");
+  await expect(page.locator("#facts")).toContainText("B♭ major");
+  await expect(page.locator(".measure").first().locator(".note").first()).toHaveText("5");
+  await expect(page.locator(".measure").first().locator(".mnum")).toHaveText("0");
+});
+
+test("opening your own file drops the song link", async ({ page }) => {
+  await page.goto("./#song=ode-to-joy");
+  await expect(page.locator("#songTitle")).toHaveText("Ode to Joy");
+  await page.setInputFiles("#fileInput", "tests/fixtures/repeat.musicxml");
+  await expect(page).not.toHaveURL(/song=/);
+  await expect(page.locator("#shareBtn")).toBeHidden();
+});
+
+test("melody only keeps the top note of each chord", async ({ page }) => {
+  await page.click("#exampleBtn");
+  const notes = () => page.locator(".note").count();
+  const before = await notes();
+  const toggle = async () => { await page.locator("#optMelody").evaluate((el) => el.closest("label").scrollIntoView({ block: "center" })); await page.locator("#optMelody").evaluate((el) => el.click()); };
+  await toggle();
+  const after = await notes();
+  expect(after).toBeLessThan(before);
+  const stacked = await page.evaluate(() => window.SheetLetters.state.score.measures.some((m) => Object.values(m.rows).some((evs) => evs.some((e) => e.notes.length > 1))));
+  expect(stacked).toBe(false);
+  await expect(page.locator(".chord").first()).toBeVisible(); // chord names still from the full song
+  await toggle();
+  expect(await notes()).toBe(before);
+});

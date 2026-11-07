@@ -1,9 +1,8 @@
-import twinkle from "./examples/twinkle.musicxml?raw";
 import { parseMIDI } from "./parse/midi.js";
 import { parseMusicXML } from "./parse/musicxml.js";
 import { readMxl } from "./parse/mxl.js";
 import { player } from "./player.js";
-import { fillTransposeMenu, render } from "./render.js";
+import { fillTransposeMenu, render, viewScore } from "./render.js";
 import { finish } from "./score/finish.js";
 import { state } from "./state.js";
 import { $, decodeText, esc } from "./util.js";
@@ -17,7 +16,8 @@ function show(score, filename, isExample) {
   finish(score);
   state.original = state.score = score;
   state.transpose = 0;
-  state.isExample = isExample;
+  state.isExample = !!isExample;
+  state.slug = null; // only library songs have a shareable link; openSong sets it
   state.visible = new Set(score.rows.map((r) => r.id));
   if (!score.title) score.title = filename.replace(/\.[^.]+$/, "").replace(/[_-]+/g, " ");
   // keep only real key changes
@@ -27,6 +27,7 @@ function show(score, filename, isExample) {
   }
   $("#songTitle").textContent = score.title;
   $("#exampleTag").hidden = !isExample;
+  if (isExample) $("#exampleTag").textContent = typeof isExample === "string" ? isExample : "Example";
   fillTransposeMenu();
 
 
@@ -48,6 +49,7 @@ function show(score, filename, isExample) {
   $("#scanHelp").hidden = true;
   showError("");
   player.onLoad(score);
+  state.score = viewScore(0); // melody only, if that's on
   render();
 }
 
@@ -79,9 +81,6 @@ async function loadFile(file) {
   }
 }
 
-function loadExample() {
-  try { show(parseMusicXML(twinkle.trim()), "Twinkle", true); }
-  catch (err) { showError(err.message); }
-}
+function loadExample() { return import("./library.js").then((l) => l.openSong("twinkle")); }
 
 export { showError, show, loadFile, loadExample };

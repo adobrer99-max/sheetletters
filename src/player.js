@@ -255,7 +255,7 @@ const player = (() => {
       ? '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 2.5h3v11h-3zM9.5 2.5h3v11h-3z"/></svg><span>Pause</span>'
       : '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2.5v11l9-5.5z"/></svg><span>Play</span>';
   }
-  function sig() { return state.transpose + "|" + [...state.visible].sort().join(","); }
+  function sig() { return state.transpose + "|" + (opts.melody ? "m" : "") + "|" + [...state.visible].sort().join(","); }
 
   async function play(stepIdx = P.pos.step, local = P.pos.local, countIn = opts.countIn) {
     if (!state.score || P.starting) return;

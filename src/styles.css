@@ -315,3 +315,8 @@ footer a { color: var(--accent); }
 .row.has-tup { margin-top: .55em; }
 .tup { position: absolute; top: -.6em; height: .35em; border: 1px solid var(--muted); border-bottom: 0; border-radius: 2px 2px 0 0; box-sizing: border-box; pointer-events: none; opacity: .75; }
 .tup i { position: absolute; left: 50%; top: -.62em; transform: translateX(-50%); font: italic 600 .55em/1 var(--font-body); background: var(--sheet); padding: 0 .25em; color: var(--muted); }
+
+/* song library menu: looks like the buttons beside it */
+.lib-select { appearance: none; -webkit-appearance: none; padding-right: 2em; cursor: pointer;
+  background-image: linear-gradient(45deg, transparent 50%, currentColor 50%), linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position: calc(100% - 14px) 52%, calc(100% - 9px) 52%; background-size: 5px 5px; background-repeat: no-repeat; max-width: 100%; }

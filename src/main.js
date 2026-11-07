@@ -1,3 +1,4 @@
+import { openFromLinkOr } from "./library.js";
 import { NAMINGS } from "./score/names.js";
 import "./styles.css";
 import "./links.js";
@@ -6,7 +7,7 @@ import { parseMIDI } from "./parse/midi.js";
 import { parseMusicXML } from "./parse/musicxml.js";
 import { readMxl } from "./parse/mxl.js";
 import { player } from "./player.js";
-import { render, setTranspose, toText } from "./render.js";
+import { refreshView, render, setTranspose, toText } from "./render.js";
 import { finish } from "./score/finish.js";
 import { transposeScore } from "./score/transpose.js";
 import { opts, saveOpts, state } from "./state.js";
@@ -60,4 +61,7 @@ $("#copyBtn").addEventListener("click", () => {
 });
 
 window.SheetLetters = { parseMusicXML, parseMIDI, readMxl, finish, toText, loadFile, transposeScore, setTranspose, state, opts, player };
-loadExample();
+// melody only: the top note of each chord
+$("#optMelody").checked = !!opts.melody;
+$("#optMelody").addEventListener("change", (e) => { opts.melody = e.target.checked; saveOpts(); refreshView(); });
+openFromLinkOr(loadExample); // a shared link's song, or the example

@@ -73,11 +73,21 @@ function fillTransposeMenu() {
   }
   sel.value = String(state.transpose);
 }
+// What's on screen: the song as opened, moved to the chosen key, and with "melody only" just the
+// top note of each chord in every staff. Chord names stay those of the full song.
+function viewScore(n = state.transpose) {
+  const s = transposeScore(state.original, n); // at 0 semitones this is the original itself: never edit it
+  if (!opts.melody) return s;
+  const top = (e) => (e.rest || e.notes.length < 2 ? e : { ...e, notes: [e.notes.reduce((a, b) => (b.midi > a.midi ? b : a))] });
+  return { ...s, measures: s.measures.map((m) => ({ ...m, rows: Object.fromEntries(Object.entries(m.rows).map(([id, evs]) => [id, evs.map(top)])) })) };
+}
+function refreshView() { state.score = viewScore(); render(); }
+
 function setTranspose(n) {
   n = Math.max(-6, Math.min(5, n));
   if (n === state.transpose && state.score) return;
   state.transpose = n;
-  state.score = transposeScore(state.original, n);
+  state.score = viewScore(n);
   $("#transpose").value = String(n);
   if (opts.plain || !relabel()) render();
 }
@@ -111,6 +121,7 @@ function relabel() {
   }
   renderFacts();
   player.onRender();
+  dispatchEvent(new Event("sl:render"));
   return true;
 }
 
@@ -181,6 +192,7 @@ function render() {
   $("#plain").hidden = !opts.plain;
   if (opts.plain) $("#plain").textContent = toText();
   player.onRender();
+  dispatchEvent(new Event("sl:render")); // keeps the share link up to date
 }
 
 /* ---------- plain-text export ---------- */
@@ -244,4 +256,4 @@ function toText() {
   return out.join("\n");
 }
 
-export { keysByMeasure, noteHTML, lyricText, renderFacts, semiText, accCount, fillTransposeMenu, setTranspose, relabel, measureWidth, render, toText };
+export { keysByMeasure, noteHTML, lyricText, renderFacts, semiText, accCount, fillTransposeMenu, setTranspose, relabel, measureWidth, render, toText, viewScore, refreshView };

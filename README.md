@@ -19,12 +19,25 @@ Live at **[adamdobrer.ca/projects/sheet-letters](https://adamdobrer.ca/projects/
 | **Spotify / YouTube links** | Finds the song's name and searches sheet-music sites for it |
 | **PDFs and photos** | Explains the one extra step (music recognition) they need |
 
+## Song library and links
+
+Eight public-domain songs to try (Twinkle, Mary Had a Little Lamb, Frère Jacques, Row Row Row Your Boat,
+Ode to Joy, Jingle Bells, Happy Birthday, Für Elise), with melody, chords and lyrics. They're written in a
+compact shorthand in `tools/songs.py`, which checks every bar adds up and writes the MusicXML:
+`python3 tools/songs.py`.
+
+Every library song has a link that opens it as you're seeing it:
+`…/app/#song=ode-to-joy&key=2&names=fixed&melody=1` (key in semitones; names = letters, fixed, movable or
+numbers; melody=1 for melody only). The address bar always holds it, and **Share link** copies it (or opens
+the share sheet on a phone).
+
 ## Reading it your way
 
 - **Note names:** letters (C D E), Do Re Mi with C as Do (as in Quebec, France and Latin America), Do Re Mi
   with the key's home note as Do, or scale-step numbers (1 2 3; in minor keys the minor home note is 1).
 - **Chord names** over the notes, from the score's chord symbols, worked out from the notes, or heard in a
   recording.
+- **Melody only** keeps just the top note of each chord, in every staff shown.
 - **Print** gives clean black-on-white pages with whole bars, in whichever names you've chosen.
 
 ## How a recording becomes letters
