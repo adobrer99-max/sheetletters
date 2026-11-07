@@ -165,3 +165,39 @@ test("save as MusicXML and MIDI, in the key shown, and open the saved file again
   await expect(page.locator("#facts")).toContainText("D major");
   await expect(page.locator(".measure").first().locator(".ev").first()).toContainText(/F[#♯]/);
 });
+
+test("fix notes: tap a note, change it, undo, and save the change", async ({ page }) => {
+  await page.selectOption("#libSelect", "mary-had-a-little-lamb");
+  await expect(page.locator("#songTitle")).toContainText("Mary");
+  await page.click("#editBtn");
+  await expect(page.locator("#editBar")).toBeVisible();
+  const first = page.locator('.measure[data-mi="0"] .ev[data-i="0"]');
+  await first.click();
+  await expect(first).toHaveClass(/sel/);
+  await expect(page.locator("#editWhat")).toContainText("E4");
+  await expect(page.locator("#editWhat")).toContainText("quarter note");
+  await page.click("#edHigher");
+  await expect(page.locator('.measure[data-mi="0"] .ev[data-i="0"]')).toContainText("F");
+  await expect(page.locator("#facts")).toContainText("changed some notes");
+  // the library link is dropped: it wouldn't include the change
+  expect(page.url()).not.toContain("song=");
+  // keyboard: up a semitone, then undo it
+  await page.keyboard.press("ArrowUp");
+  await expect(page.locator('.measure[data-mi="0"] .ev[data-i="0"]')).toContainText(/F[#♯]/);
+  await page.keyboard.press("Control+z");
+  await expect(page.locator('.measure[data-mi="0"] .ev[data-i="0"] .note').first()).toHaveText("F");
+  // next note with →, then delete it: a rest takes its place
+  await page.keyboard.press("ArrowRight");
+  await expect(page.locator("#editWhat")).toContainText("D4");
+  await page.click("#edDelete");
+  await expect(page.locator('.measure[data-mi="0"] .ev')).toHaveCount(4);
+  // the change comes along when transposed and when saved
+  await page.click("#transUp"); await page.click("#transUp");
+  await expect(page.locator('.measure[data-mi="0"] .ev[data-i="0"]')).toContainText("G");
+  const [xml] = await Promise.all([page.waitForEvent("download"), page.click("#saveXmlBtn")]);
+  const text = await (await xml.createReadStream()).toArray().then((c) => Buffer.concat(c).toString());
+  expect(text).toMatch(/<step>G<\/step><octave>4<\/octave>/);
+  await page.click("#edDone");
+  await expect(page.locator("#editBar")).toBeHidden();
+  await expect(page.locator(".ev.sel")).toHaveCount(0);
+});

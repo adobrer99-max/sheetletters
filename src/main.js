@@ -3,6 +3,7 @@ import { NAMINGS } from "./score/names.js";
 import "./styles.css";
 import "./links.js";
 import "./save.js";
+import { editing } from "./edit.js";
 import { loadExample, loadFile } from "./load.js";
 import { parseMIDI } from "./parse/midi.js";
 import { parseMusicXML } from "./parse/musicxml.js";
@@ -61,7 +62,7 @@ $("#copyBtn").addEventListener("click", () => {
   if (navigator.clipboard?.writeText) navigator.clipboard.writeText(text).then(done, fallback); else fallback();
 });
 
-window.SheetLetters = { parseMusicXML, parseMIDI, readMxl, finish, toText, loadFile, transposeScore, setTranspose, state, opts, player };
+window.SheetLetters = { parseMusicXML, parseMIDI, readMxl, finish, toText, loadFile, transposeScore, setTranspose, state, opts, player, editing };
 // melody only: the top note of each chord
 $("#optMelody").checked = !!opts.melody;
 $("#optMelody").addEventListener("change", (e) => { opts.melody = e.target.checked; saveOpts(); refreshView(); });

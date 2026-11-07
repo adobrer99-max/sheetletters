@@ -57,6 +57,7 @@ function renderFacts() {
   facts.push(`<span><b>${s.measures.length}</b> measures</span>`);
   if (s.hasChords) facts.push(`<span>Chords ${s.chordsHeard ? "heard in the recording" : s.chordSource === "score" ? "from the chord symbols in the score" : "worked out from the notes"}</span>`);
   facts.push(`<span>from ${s.format}</span>`);
+  if (state.edited) facts.push(`<span class="moved">You've changed some notes: save as MusicXML or MIDI to keep them</span>`);
   $("#facts").innerHTML = facts.join("");
 }
 const semiText = (n) => `${n > 0 ? "up" : "down"} ${Math.abs(n)} semitone${Math.abs(n) === 1 ? "" : "s"}`;

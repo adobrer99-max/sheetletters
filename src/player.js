@@ -534,6 +534,12 @@ const player = (() => {
       if (P.playing) { P.shownMi = -1; if (sig() !== P.lastSig) reseek(); }
     },
     play, pause, playFrom, playOrder, setSound, media, get state() { return P; },
+    /** Sound one note now (when fixing notes), unless the song is playing. */
+    preview(midi) {
+      if (P.playing) return;
+      try { audio(); } catch (e) { return; }
+      loadSample(nearest(midi)).then(() => { const t = ctx.currentTime + 0.01; strike(midi, t, t + 0.45, 0.4); }).catch(() => {});
+    },
   };
 })();
 

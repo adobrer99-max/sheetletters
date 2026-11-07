@@ -162,6 +162,23 @@
       <pre class="plain" id="plain" hidden></pre>
 
       <div class="player" id="player" role="group" aria-label="Playback">
+        <div class="editbar" id="editBar" role="group" aria-label="Fix the selected note" hidden>
+          <span class="edit-what" id="editWhat" aria-live="polite">Tap a note to fix it.</span>
+          <span class="edit-tools">
+            <button class="btn step" id="edLower" type="button" title="Lower (↓)" aria-label="Lower">▼</button>
+            <button class="btn step" id="edHigher" type="button" title="Higher (↑)" aria-label="Higher">▲</button>
+            <button class="btn" id="edOctDown" type="button" title="An octave lower (Shift+↓)">−8ve</button>
+            <button class="btn" id="edOctUp" type="button" title="An octave higher (Shift+↑)">+8ve</button>
+            <button class="btn" id="edEarlier" type="button" title="Move earlier">◀ Earlier</button>
+            <button class="btn" id="edLater" type="button" title="Move later">Later ▶</button>
+            <button class="btn" id="edShorter" type="button">Shorter</button>
+            <button class="btn" id="edLonger" type="button">Longer</button>
+            <button class="btn" id="edAdd" type="button" title="Add a note after this one">Add after</button>
+            <button class="btn" id="edDelete" type="button" title="Delete (Delete key)">Delete</button>
+            <button class="btn" id="edUndo" type="button" title="Undo (Ctrl+Z)" disabled>Undo</button>
+            <button class="btn primary" id="edDone" type="button">Done</button>
+          </span>
+        </div>
         <div class="transport">
           <button class="btn primary play" id="playBtn" type="button"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2.5v11l9-5.5z"/></svg><span>Play</span></button>
           <button class="btn" id="rewindBtn" type="button" title="Back to the start" aria-label="Back to the start"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 2.5h2v11H3zM14 2.5v11l-8-5.5z"/></svg></button>
@@ -181,6 +198,7 @@
       <div class="actions">
         <button class="btn" id="copyBtn" type="button">Copy as text</button>
         <button class="btn" id="printBtn" type="button">Print</button>
+        <button class="btn" id="editBtn" type="button" aria-pressed="false" title="Tap any note to change it">Fix notes</button>
         <button class="btn" id="saveXmlBtn" type="button" title="Opens in MuseScore, Sibelius, Finale and Dorico">Save MusicXML</button>
         <button class="btn" id="saveMidiBtn" type="button" title="Opens in GarageBand, Logic and most music apps">Save MIDI</button>
         <button class="btn" id="shareBtn" type="button" hidden>Share link</button>

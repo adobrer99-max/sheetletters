@@ -17,6 +17,7 @@ function show(score, filename, isExample) {
   state.original = state.score = score;
   state.transpose = 0;
   state.isExample = !!isExample;
+  state.edited = false;
   state.slug = null; // only library songs have a shareable link; openSong sets it
   state.visible = new Set(score.rows.map((r) => r.id));
   if (!score.title) score.title = filename.replace(/\.[^.]+$/, "").replace(/[_-]+/g, " ");
