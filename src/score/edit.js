@@ -97,3 +97,108 @@ export function lengthName(d) {
   const beats = +d.toFixed(2);
   return `${beats} beat${beats === 1 ? "" : "s"}`;
 }
+
+/* ---- several notes at once: a run of notes in one staff row, possibly across bar lines ---- */
+
+/** Every note event in the row from a to b (each { mi, ev }), in playing order, whichever comes first. */
+export function rangeEvents(score, rid, a, b) {
+  const all = [];
+  score.measures.forEach((m, mi) => { for (const ev of notesIn(m.rows[rid] || [])) all.push({ mi, ev }); });
+  let i = all.findIndex((x) => x.ev === a.ev), j = all.findIndex((x) => x.ev === b.ev);
+  if (i < 0 || j < 0) return [];
+  if (i > j) [i, j] = [j, i];
+  return all.slice(i, j + 1);
+}
+
+// the note straight after a run in the same row (the next bar's first, if the run ends a bar)
+function noteAfter(score, rid, item) {
+  for (let mi = item.mi; mi < score.measures.length; mi++) {
+    const e = notesIn(score.measures[mi].rows[rid] || []).find((x) => mi > item.mi || x.t > item.ev.t + EPS);
+    if (e) return e;
+  }
+  return null;
+}
+// ties only hold between notes that are still the same: not across the edges of a changed run
+function untieEdges(score, rid, list, after) {
+  for (const n of list[0].ev.notes) n.held = false;
+  if (after) for (const n of after.notes) n.held = false;
+}
+
+/** Every note in the run moves up or down together (chords and all). */
+export function changePitchRange(score, rid, list, semis) {
+  for (const { ev } of list) for (const n of ev.notes) if (n.midi + semis < 21 || n.midi + semis > 108) return fail("That's as far as a piano goes.");
+  const after = noteAfter(score, rid, list[list.length - 1]);
+  for (const { mi, ev } of list) {
+    const f = fifthsAt(score, mi);
+    for (const n of ev.notes) Object.assign(n, spell(n.midi + semis, f));
+  }
+  untieEdges(score, rid, list, after);
+  return OK;
+}
+
+export function removeRange(score, rid, list) {
+  const after = noteAfter(score, rid, list[list.length - 1]);
+  if (after) for (const n of after.notes) n.held = false;
+  const gone = new Set(list.map((x) => x.ev));
+  for (const mi of new Set(list.map((x) => x.mi))) {
+    const m = score.measures[mi];
+    m.rows[rid] = restRow((m.rows[rid] || []).filter((e) => !gone.has(e)), m.len);
+  }
+  return OK;
+}
+
+/** Move the whole run earlier or later (quarter notes), across bar lines if need be. Notes that end up
+ *  crossing a bar line are split there and tied. Other notes in the way stop it. */
+export function moveRange(score, rid, list, by) {
+  const starts = [];
+  let at = 0;
+  for (const m of score.measures) { starts.push(at); at += m.len; }
+  const total = at;
+  const moving = new Set(list.map((x) => x.ev));
+  const abs = (mi, e) => starts[mi] + e.t;
+  const first = list[0], last = list[list.length - 1];
+  const from = abs(first.mi, first.ev) + by, to = Math.max(...list.map(({ mi, ev }) => abs(mi, ev) + ev.d)) + by;
+  if (from < -EPS) return fail("It's already at the start of the song.");
+  if (to > total + EPS) return fail("It's already at the end of the song.");
+  // the notes either side that aren't moving
+  let before = null, after = null;
+  score.measures.forEach((m, mi) => {
+    for (const e of notesIn(m.rows[rid] || [])) {
+      if (moving.has(e)) continue;
+      const s = abs(mi, e);
+      if (s < abs(first.mi, first.ev) - EPS) { if (!before || s > before.s) before = { s, end: s + e.d, e }; }
+      else if (s > abs(last.mi, last.ev) - EPS && (!after || s < after.s)) after = { s, e };
+    }
+  });
+  if ((before && from < before.end - EPS) || (after && to > after.s + EPS)) return fail("There's a note in the way.");
+  untieEdges(score, rid, list, after?.e);
+  // take the run out, then put each note back where it now starts, splitting at bar lines
+  const touched = new Set();
+  for (const { mi, ev } of list) { const m = score.measures[mi]; m.rows[rid] = m.rows[rid].filter((e) => e !== ev); touched.add(mi); }
+  const locate = (q) => { let i = starts.length - 1; while (i > 0 && starts[i] > q + EPS) i--; return i; };
+  for (const { mi, ev } of list) {
+    let s = abs(mi, ev) + by, left = ev.d, held = false, piece = ev;
+    while (left > EPS) {
+      const k = locate(s), m = score.measures[k], room = starts[k] + m.len - s;
+      const d = Math.min(left, room);
+      const e = piece === ev ? ev : { t: 0, d: 0, notes: ev.notes.map((n) => ({ ...n, held: true })), lyric: null };
+      e.t = Math.max(0, s - starts[k]); e.d = d;
+      if (held) for (const n of e.notes) n.held = true;
+      (m.rows[rid] ||= []).push(e); touched.add(k);
+      s += d; left -= d; held = true; piece = null;
+    }
+  }
+  // a tied piece that now sits right after its own note in the same bar becomes one note again
+  for (const k of touched) {
+    const m = score.measures[k];
+    const evs = (m.rows[rid] || []).filter((e) => !e.rest).sort((a, b) => a.t - b.t);
+    const out = [];
+    for (const e of evs) {
+      const p = out[out.length - 1];
+      if (p && e.notes.every((n) => n.held) && Math.abs(p.t + p.d - e.t) < EPS && e.notes.length === p.notes.length && e.notes.every((n) => p.notes.some((x) => x.midi === n.midi))) { p.d += e.d; continue; }
+      out.push(e);
+    }
+    m.rows[rid] = restRow(out, m.len);
+  }
+  return OK;
+}

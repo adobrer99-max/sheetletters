@@ -186,7 +186,7 @@ button, input, select { font: inherit; color: inherit; }
 .sheet.editing .ev[data-i] { cursor: pointer; border-radius: .22em; }
 .sheet.editing .ev[data-i]:hover { box-shadow: 0 0 0 .1em var(--rule); }
 .ev.sel, .sheet.editing .ev.sel:hover { box-shadow: 0 0 0 .16em var(--accent); background: var(--accent-soft); border-radius: .22em; }
-#editBtn[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); }
+#editBtn[aria-pressed="true"], #edMany[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); }
 @media (max-width: 560px) { .editbar .edit-tools { display: grid; grid-template-columns: repeat(4, 1fr); width: 100%; } .editbar .btn { justify-content: center; padding: 6px 4px; } }
 .player select.sound { border: 1px solid var(--rule); background: var(--sheet); color: var(--ink); border-radius: 8px; padding: 4px 6px; font-size: .88rem; max-width: 11em; }
 .mnum { background: none; border: 0; padding: 0 .2em; margin-left: -.2em; border-radius: 3px; cursor: pointer; font: inherit; color: inherit; }

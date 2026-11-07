@@ -201,3 +201,35 @@ test("fix notes: tap a note, change it, undo, and save the change", async ({ pag
   await expect(page.locator("#editBar")).toBeHidden();
   await expect(page.locator(".ev.sel")).toHaveCount(0);
 });
+
+test("fix notes: select several and move them together", async ({ page }) => {
+  await page.selectOption("#libSelect", "mary-had-a-little-lamb");
+  await page.click("#editBtn");
+  const ev = (mi, i) => page.locator(`.measure[data-mi="${mi}"] .ev[data-i="${i}"]`);
+  await ev(0, 2).click();
+  await page.click("#edMany");
+  await expect(page.locator("#editWhat")).toContainText("tap the last note");
+  await ev(1, 1).click();
+  await expect(page.locator("#editWhat")).toContainText("4 notes");
+  await expect(page.locator("#editWhat")).toContainText("bars 1–2");
+  await expect(page.locator(".ev.sel")).toHaveCount(4);
+  await expect(page.locator("#edShorter")).toBeDisabled();
+  await page.click("#edHigher"); await page.click("#edHigher");
+  await expect(ev(0, 2)).toContainText("D");
+  await expect(ev(1, 1)).toContainText(/F[#♯]/);
+  await expect(ev(0, 0)).toContainText("E"); // outside the selection: unchanged
+  await expect(page.locator(".ev.sel")).toHaveCount(4);
+  // Shift+→ adds the next note; Esc goes back to one note; undo twice restores the tune
+  await page.keyboard.press("Shift+ArrowRight");
+  await expect(page.locator("#editWhat")).toContainText("5 notes");
+  await page.keyboard.press("Escape");
+  await expect(page.locator(".ev.sel")).toHaveCount(1);
+  await page.keyboard.press("Control+z"); await page.keyboard.press("Control+z");
+  await expect(ev(0, 2).locator(".note").first()).toHaveText("C");
+  // Shift+click works too, and the whole run can be deleted
+  await ev(2, 0).click();
+  await ev(2, 2).click({ modifiers: ["Shift"] });
+  await expect(page.locator("#editWhat")).toContainText("3 notes");
+  await page.click("#edDelete");
+  await expect(page.locator('.measure[data-mi="2"] .ev[data-i]')).toHaveCount(0);
+});

@@ -67,3 +67,44 @@ describe("fixing notes", () => {
     expect(bar(again, 0)).toMatch(/^F#4@0/);
   });
 });
+
+import { rangeEvents, changePitchRange, moveRange, removeRange } from "../../src/score/edit.js";
+describe("fixing several notes at once", () => {
+  const run = (s, a, b) => rangeEvents(s, s.rows[0].id, pick(s, ...a), pick(s, ...b));
+  it("picks the notes between two taps, either way round, across bar lines", () => {
+    const s = open("mary-had-a-little-lamb");
+    expect(run(s, [0, 2], [1, 1]).map((x) => x.ev.notes[0].step).join("")).toBe("CDEE");
+    expect(run(s, [1, 1], [0, 2])).toHaveLength(4);
+  });
+  it("moves a phrase up or down", () => {
+    const s = open("mary-had-a-little-lamb");
+    changePitchRange(s, s.rows[0].id, run(s, [0, 0], [0, 3]), 2);
+    expect(bar(s, 0)).toBe("F#4@0/1 E4@1/1 D4@2/1 E4@3/1");
+    expect(bar(s, 1)).toMatch(/^E4@0/); // the next bar didn't move
+  });
+  it("deletes a phrase", () => {
+    const s = open("mary-had-a-little-lamb");
+    removeRange(s, s.rows[0].id, run(s, [0, 2], [1, 0]));
+    expect(bar(s, 0)).toBe("E4@0/1 D4@1/1 r2");
+    expect(bar(s, 1)).toBe("r1 E4@1/1 E4@2/2");
+  });
+  it("moves a phrase later, splitting a note at the bar line with a tie", () => {
+    const s = open("mary-had-a-little-lamb");
+    // bar 8 is one whole note, so clear the end of bar 7 first to make room, then nudge bar 6's end
+    removeRange(s, s.rows[0].id, run(s, [6, 3], [6, 3]));
+    expect(moveRange(s, s.rows[0].id, run(s, [6, 0], [6, 2]), 0.5).ok).toBe(true);
+    expect(bar(s, 6)).toBe("r0.5 D4@0.5/1 D4@1.5/1 E4@2.5/1 r0.5");
+    // and back again, then too far: the note before is in the way
+    expect(moveRange(s, s.rows[0].id, run(s, [6, 0], [6, 2]), -0.5).ok).toBe(true);
+    expect(bar(s, 6)).toBe("D4@0/1 D4@1/1 E4@2/1 r1");
+    expect(moveRange(s, s.rows[0].id, run(s, [6, 0], [6, 2]), -0.25).ok).toBe(false);
+  });
+  it("a note pushed over the bar line is tied into the next bar", () => {
+    const s = open("mary-had-a-little-lamb");
+    removeRange(s, s.rows[0].id, run(s, [7, 0], [7, 0])); // empty the last bar
+    expect(moveRange(s, s.rows[0].id, run(s, [6, 2], [6, 3]), 0.5).ok).toBe(true);
+    expect(bar(s, 6)).toBe("D4@0/1 D4@1/1 r0.5 E4@2.5/1 D4@3.5/0.5");
+    expect(s.measures[7].rows[s.rows[0].id].filter((e) => !e.rest)[0]).toMatchObject({ t: 0, d: 0.5 });
+    expect(s.measures[7].rows[s.rows[0].id][0].notes[0].held).toBe(true);
+  });
+});
