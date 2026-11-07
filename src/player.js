@@ -1,3 +1,4 @@
+import { makeSync } from "./audio/sync.js";
 import { playOrder } from "./score/order.js";
 import { opts, saveOpts, state } from "./state.js";
 import { $, EPS, esc } from "./util.js";
@@ -23,7 +24,10 @@ const player = (() => {
     bpm: 90, beatQ: 1, fileTempo: null,
     pos: { step: 0, local: 0 }, timer: null, raf: 0, shownMi: -1, lastSig: "",
     loop: { on: false, from: 0, to: 0 }, userScrollAt: 0,
+    sound: "piano", rec: null, starts: [], // rec: the recording a score came from, when it can play along
   };
+  const media = typeof Audio !== "undefined" ? new Audio() : null;
+  if (media) { media.preload = "auto"; media.preservesPitch = media.mozPreservesPitch = media.webkitPreservesPitch = true; }
 
   function audio() {
     if (!ctx) {
@@ -132,6 +136,8 @@ const player = (() => {
     else order = playOrder(ms);
     let q = 0;
     P.steps = order.map((mi) => { const st = { mi, q }; q += ms[mi].len; return st; });
+    let a = 0;
+    P.starts = ms.map((m) => { const x = a; a += m.len; return x; });
     P.loopOrder = order;
   }
   function extendLoop() {
@@ -180,6 +186,7 @@ const player = (() => {
 
   function tick() {
     if (!P.playing) return;
+    if (recMode()) return recTick();
     const horizon = ctx.currentTime + LOOKAHEAD;
     while (true) {
       if (P.next >= P.steps.length) { if (P.loop.on) extendLoop(); else break; }
@@ -194,6 +201,7 @@ const player = (() => {
 
   /* ---- where we are, for the highlight ---- */
   function nowQ() {
+    if (recMode()) return recNowQ();
     const lat = (ctx.outputLatency || 0) + (ctx.baseLatency || 0);
     return (ctx.currentTime - lat - P.t0) * P.qps;
   }
@@ -221,7 +229,7 @@ const player = (() => {
       clearMarks();
       P.shownMi = st.mi;
       const m = state.score.measures[st.mi];
-      $("#playStatus").textContent = `Measure ${m.number}${P.loop.on ? " · looping" : ""}`;
+      $("#playStatus").textContent = `Measure ${m.number}${P.loop.on ? " · looping" : ""}${recMode() && state.transpose ? " · the recording stays in its own key" : ""}`;
       if (el) { el.classList.add("playing"); follow(el); }
     }
     if (!el) return;
@@ -255,10 +263,78 @@ const player = (() => {
       ? '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 2.5h3v11h-3zM9.5 2.5h3v11h-3z"/></svg><span>Pause</span>'
       : '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2.5v11l9-5.5z"/></svg><span>Play</span>';
   }
+  /* ---- playing the recording itself, with the letters following its real beat ---- */
+  const recMode = () => !!(P.rec && P.sound !== "piano");
+  const recSync = () => { const src = P.rec.sources[P.sound]; return makeSync(P.rec.sync, src.offset); };
+  // how fast to play the recording: the speed box against the speed it was recorded at
+  function recRate() { return Math.max(0.5, Math.min(2, (P.bpm * P.beatQ) / (P.rec.bpm || P.bpm * P.beatQ))); }
+  function recNowQ() {
+    const base = P.starts[P.steps[0]?.mi ?? 0] || 0;
+    if (P.recWait) return P.fromQ - Math.max(0, P.recWait - ctx.currentTime) * P.qps; // still counting in
+    return P.recSync.posAt(media.currentTime) - base;
+  }
+  function recTick() {
+    if (P.recWait) return;
+    const ms = state.score.measures, pos = P.recSync.posAt(media.currentTime);
+    if (P.loop.on) {
+      const end = P.starts[P.loop.to] + ms[P.loop.to].len;
+      if (pos >= end - 0.02) { media.currentTime = Math.max(0, P.recSync.timeAt(P.starts[P.loop.from])); clearMarks(); }
+      return;
+    }
+    const last = ms.length - 1;
+    if (media.ended || pos > P.starts[last] + ms[last].len + 1) finish();
+  }
+  function playRecording(stepIdx, local, countIn) {
+    audio();
+    metro.stop();
+    buildSteps();
+    if (stepIdx >= P.steps.length || stepIdx < 0) { stepIdx = 0; local = 0; }
+    const st = P.steps[stepIdx], first = state.score.measures[st.mi];
+    P.recSync = recSync();
+    const src = P.rec.sources[P.sound].url;
+    if (media.getAttribute("src") !== src) media.src = src;
+    media.playbackRate = recRate();
+    media.currentTime = Math.max(0, P.recSync.timeAt(P.starts[st.mi] + local));
+    P.fromQ = st.q + local; P.next = stepIdx; P.playing = true; P.lastSig = sig();
+    setPlayButton(true);
+    const go = () => {
+      P.recWait = 0;
+      media.play().catch(() => { halt(); $("#playStatus").textContent = "Couldn't play the recording here. Try Piano instead."; });
+    };
+    const ci = countIn ? Math.round(first.timeLen / beatOf(first)) || 4 : 0;
+    if (ci) {
+      const lead = 0.12, beat = beatOf(first) / P.qps;
+      for (let k = 0; k < ci; k++) click(ctx.currentTime + lead + k * beat, k === 0);
+      P.recWait = ctx.currentTime + lead + ci * beat;
+      P.recTimer = setTimeout(go, (lead + ci * beat) * 1000);
+    } else go();
+    clearInterval(P.timer); P.timer = setInterval(tick, TICK);
+    cancelAnimationFrame(P.raf); P.raf = requestAnimationFrame(frame);
+  }
+  function setSound(which) {
+    const was = P.playing, q = was ? nowQ() : 0;
+    P.sound = P.rec && P.rec.sources[which] ? which : "piano";
+    if (P.rec) P.rec.pref = P.sound;
+    $("#soundSel").value = P.sound;
+    if (was) reseek(q);
+  }
+  function fillSound(score) {
+    const sources = score.fromRecording?.sources;
+    const sel = $("#soundSel");
+    if (!sources || !media) { P.rec = null; P.sound = "piano"; sel.hidden = true; return; }
+    const pref = P.rec?.pref;
+    P.rec = { sources, sync: score.fromRecording.sync, bpm: score.tempo, pref };
+    sel.innerHTML = `<option value="piano">Piano</option>` + Object.entries(sources).map(([k, v]) => `<option value="${k}">${esc(v.label)}</option>`).join("");
+    sel.hidden = false;
+    P.sound = pref && (pref === "piano" || sources[pref]) ? pref : "mix"; // the recording itself, unless you chose otherwise
+    sel.value = P.sound;
+  }
+
   function sig() { return state.transpose + "|" + (opts.melody ? "m" : "") + "|" + [...state.visible].sort().join(","); }
 
   async function play(stepIdx = P.pos.step, local = P.pos.local, countIn = opts.countIn) {
     if (!state.score || P.starting) return;
+    if (recMode()) return playRecording(stepIdx, local, countIn);
     P.starting = true;
     try {
       audio();
@@ -301,6 +377,8 @@ const player = (() => {
   }
   function halt() {
     P.playing = false;
+    clearTimeout(P.recTimer); P.recWait = 0;
+    if (media && !media.paused) media.pause();
     clearInterval(P.timer); cancelAnimationFrame(P.raf);
     silence();
     setPlayButton(false);
@@ -345,6 +423,14 @@ const player = (() => {
     if (!fromInput) $("#bpm").value = v;
     const fileBpm = P.fileTempo ? Math.round(P.fileTempo / P.beatQ) : null;
     $("#bpmMark").title = fileBpm ? `The file says ${fileBpm}` : "The file doesn't give a speed";
+    if (recMode()) {
+      // the recording just plays faster or slower, at the same pitch
+      const r = recRate();
+      if (media) media.playbackRate = r;
+      const asked = (P.bpm * P.beatQ) / (P.rec.bpm || 1);
+      if (Math.abs(asked - r) > 0.01) $("#playStatus").textContent = "The recording plays at half to double its speed";
+      return;
+    }
     reseek(q);
     metro.retime();
   }
@@ -398,6 +484,7 @@ const player = (() => {
   $("#bpmUp").addEventListener("click", () => setBpm(P.bpm + (P.bpm >= 60 ? 4 : 2)));
   $("#bpm").addEventListener("change", (e) => setBpm(e.target.value));
   $("#tapBtn").addEventListener("click", tap);
+  $("#soundSel").addEventListener("change", (e) => setSound(e.target.value));
   $("#measures").addEventListener("click", (e) => { const b = e.target.closest(".mnum"); if (b) playFrom(+b.dataset.mi); });
   $("#optMetro").checked = !!opts.metro;
   $("#optCountIn").checked = !!opts.countIn;
@@ -436,6 +523,7 @@ const player = (() => {
       P.bpm = Math.round((P.fileTempo || 90) / P.beatQ);
       P.loop.on = false; $("#optLoop").checked = false;
       fillLoopMenus(score);
+      fillSound(score);
       // start fetching the piano quietly once the page is idle, unless the visitor is saving data
       if (!saveData()) (window.requestIdleCallback || ((f) => setTimeout(f, 300)))(() => { try { preload(samplesFor(score)); } catch (e) {} });
       $("#playStatus").textContent = P.fileTempo ? "" : "The file doesn't say how fast, so it starts at 90. Tap or use − + to change it.";
@@ -445,7 +533,7 @@ const player = (() => {
       syncLoopUI();
       if (P.playing) { P.shownMi = -1; if (sig() !== P.lastSig) reseek(); }
     },
-    play, pause, playFrom, playOrder, get state() { return P; },
+    play, pause, playFrom, playOrder, setSound, media, get state() { return P; },
   };
 })();
 

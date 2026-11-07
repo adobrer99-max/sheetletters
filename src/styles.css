@@ -178,6 +178,7 @@ button, input, select { font: inherit; color: inherit; }
 .player .status { flex: 1 1 12em; }
 .loop-range { display: inline-flex; align-items: center; gap: 6px; font-size: .88rem; }
 .loop-range select { border: 1px solid var(--rule); background: var(--sheet); border-radius: 8px; padding: 4px 6px; font-size: .88rem; }
+.player select.sound { border: 1px solid var(--rule); background: var(--sheet); color: var(--ink); border-radius: 8px; padding: 4px 6px; font-size: .88rem; max-width: 11em; }
 .mnum { background: none; border: 0; padding: 0 .2em; margin-left: -.2em; border-radius: 3px; cursor: pointer; font: inherit; color: inherit; }
 .mnum:hover { background: var(--accent-soft); color: var(--accent); }
 .measure.playing { background: color-mix(in srgb, var(--accent-soft) 55%, transparent); }

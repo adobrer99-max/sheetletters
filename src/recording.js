@@ -24,6 +24,7 @@ const part = () => document.querySelector('input[name="recPart"]:checked').value
 
 export async function openRecording(f) {
   file = f; job.stop(); job.reset();
+  if (fileUrl) { URL.revokeObjectURL(fileUrl); fileUrl = null; }
   showError("");
   $("#recPanel").hidden = false;
   $("#recTitle").textContent = (f.name || "Recording").replace(/\.[^.]+$/, "");
@@ -113,12 +114,21 @@ function done(score) {
   setAudio(r.part);
   for (const el of document.querySelectorAll('input[name="recMeter"]')) el.checked = +el.value === (job.settings.perBar || 4);
   for (const el of document.querySelectorAll('input[name="recGrid"]')) el.checked = +el.value === (job.settings.grid || 0.25);
-  if (score) show(score, file.name, false);
+  if (score) {
+    // for playing the recording along with the letters: the whole song, and the part on its own
+    if (!fileUrl) fileUrl = URL.createObjectURL(file);
+    score.fromRecording.sources = {
+      mix: { url: fileUrl, offset: job.range[0], label: "The recording" },
+      ...(job.stems ? { part: { url: audioUrl, offset: 0, label: `Just the ${PARTS[r.part].label.toLowerCase()}` } } : {}),
+    };
+    show(score, file.name, false);
+  }
 }
 
-let audioUrl = null;
+let audioUrl = null, fileUrl = null;
 function setAudio(p) {
-  if (audioUrl) URL.revokeObjectURL(audioUrl);
+  // the old part's address stays valid a while: the player may still be playing it
+  const old = audioUrl; if (old) setTimeout(() => URL.revokeObjectURL(old), 60000);
   audioUrl = URL.createObjectURL(wavBlob(job.partAudio(p)));
   $("#recAudio").src = audioUrl;
   $("#recAudio").title = `Hear the ${PARTS[p].label.toLowerCase()} on its own`;

@@ -162,3 +162,32 @@ describe("telling recordings from sheet music", () => {
     expect(isAudioFile({ name: "voice memo", type: "audio/mp4" }, "\0\0\0 ", u8("    ftyp"))).toBe(true);
   });
 });
+
+import { beatTime, makeSync } from "../../src/audio/sync.js";
+describe("following the recording", () => {
+  // a band that speeds up: beats 0.60 s apart at first, 0.50 s by the end
+  const beats = Array.from({ length: 40 }, (_, i) => 1.2 + i * 0.6 - i * i * 0.00128);
+  it("beat time is the inverse of beat position", () => {
+    for (const b of [-0.5, 0, 0.3, 7.25, 20, 38.9, 41]) expect(beatPosition(beatTime(b, beats), beats)).toBeCloseTo(b, 6);
+  });
+  it("each letter lands on its note in the recording, pickup bar and all", () => {
+    // a tune that starts on beat 3 of a bar (so the score gets a pickup bar), one note per beat
+    const line = [];
+    for (let i = 2; i < 30; i++) line.push({ midi: 60 + (i % 7), start: beats[i], end: beats[i + 1] - 0.05 });
+    const { notes, origin } = quantize(line, beats, { downbeat: 0, perBar: 4, grid: 0.25 });
+    const score = finish(parseMIDI(toMidiFile(notes, { bpm: 110, perBar: 4 }).buffer));
+    expect(score.measures[0].pickup).toBe(true);
+    const sync = makeSync({ beats, shift: origin + (score.measures[0].pickupCut || 0) }, 5); // the section started 5 s into the file
+    let at = 0, k = 0;
+    for (const m of score.measures) {
+      for (const e of m.rows[score.rows[0].id] || []) {
+        if (e.rest || e.notes[0].held) continue;
+        expect(sync.timeAt(at + e.t)).toBeCloseTo(5 + line[k].start, 2);
+        expect(sync.posAt(5 + line[k].start)).toBeCloseTo(at + e.t, 2);
+        k++;
+      }
+      at += m.len;
+    }
+    expect(k).toBe(line.length);
+  });
+});

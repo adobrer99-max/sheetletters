@@ -209,7 +209,8 @@ export class RecordingImport {
     }
     score.title = name;
     score.format = `a recording (${PARTS[s.part].label.toLowerCase()})`;
-    score.fromRecording = { part: s.part, bpm: Math.round(bpm), notes: notes.length };
+    // where the letters sit in the recording: the first bar starts at beat (origin + any pickup trim)
+    score.fromRecording = { part: s.part, bpm: Math.round(bpm), notes: notes.length, sync: { beats: this.beat.beats, shift: origin + (score.measures[0].pickupCut || 0) } };
     if (score.rows[0]) score.rows[0].name = PARTS[s.part].label;
     return score;
   }

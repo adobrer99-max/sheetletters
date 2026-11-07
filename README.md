@@ -39,6 +39,10 @@ the share sheet on a phone).
   recording.
 - **Melody only** keeps just the top note of each chord, in every staff shown.
 - **Print** gives clean black-on-white pages with whole bars, in whichever names you've chosen.
+- **Save MusicXML** or **Save MIDI** downloads what's on screen: in the key shown, melody only if it's on,
+  hidden staves left out, at the speed you've set. MusicXML (for MuseScore, Sibelius, Finale, Dorico) keeps
+  chords, lyrics, ties, triplets, grace notes and repeats. MIDI (for GarageBand, Logic and the like) keeps the
+  notes, speed, key and lyrics, with repeats written out in playing order.
 
 ## How a recording becomes letters
 
@@ -55,6 +59,12 @@ You choose where the melody is: **vocals**, a **lead instrument** (guitar, keys,
 **a solo recording** (which skips the splitting step). Afterwards you can halve or double the speed, move the
 bar lines, switch between 4/4 and 3/4, choose eighth- or sixteenth-note detail, try another part, and listen
 to the part on its own. None of that redoes the slow splitting.
+
+**Play along with the recording.** The Sound menu in the player switches between the piano, the recording
+itself and (for a split song) the part on its own. The letters follow the beat found in the recording, so
+they stay with the band even when it speeds up or slows down. The speed box slows the recording down without
+changing its pitch (half to double speed), and looping and starting from any bar work the same as with the
+piano. The recording stays in its own key when you transpose the letters.
 
 **What to expect.** A clear lead vocal or solo instrument comes out as a good first draft. Rap, heavy effects
 and stacked harmonies come out worse. Rhythm is the hardest part, so check it by ear with the Play button.
