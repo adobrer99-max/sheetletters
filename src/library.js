@@ -79,8 +79,10 @@ function updateLink() {
 addEventListener("sl:render", updateLink);
 addEventListener("hashchange", () => { const l = readLink(); if (l && (l.slug !== state.slug || l.key !== state.transpose)) openSong(l.slug, l); });
 
-$("#libSelect").innerHTML = `<option value="">Try a song…</option>` +
-  SONGS.map((s) => `<option value="${esc(s.slug)}">${esc(s.title)}</option>`).join("");
+// grouped by level, in the order the groups first appear
+const groups = [...new Set(SONGS.map((s) => s.level || "More songs"))];
+$("#libSelect").innerHTML = `<option value="">Try a song…</option>` + groups.map((g) =>
+  `<optgroup label="${esc(g)}">${SONGS.filter((s) => (s.level || "More songs") === g).map((s) => `<option value="${esc(s.slug)}">${esc(s.title)}</option>`).join("")}</optgroup>`).join("");
 $("#libSelect").addEventListener("change", (e) => { if (e.target.value) openSong(e.target.value); });
 
 $("#shareBtn").addEventListener("click", async () => {

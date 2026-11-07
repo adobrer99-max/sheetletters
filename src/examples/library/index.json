@@ -1,50 +1,163 @@
 [
  {
   "slug": "twinkle",
+  "level": "First songs",
   "title": "Twinkle, Twinkle, Little Star",
   "composer": "Traditional",
   "time": "4/4"
  },
  {
   "slug": "mary-had-a-little-lamb",
+  "level": "First songs",
   "title": "Mary Had a Little Lamb",
   "composer": "Lowell Mason (1830)",
   "time": "4/4"
  },
  {
   "slug": "frere-jacques",
+  "level": "Folk songs",
   "title": "Frère Jacques (Are You Sleeping?)",
   "composer": "Traditional",
   "time": "4/4"
  },
  {
   "slug": "row-row-row-your-boat",
+  "level": "First songs",
   "title": "Row, Row, Row Your Boat",
   "composer": "Traditional (1852)",
   "time": "6/8"
  },
  {
   "slug": "ode-to-joy",
+  "level": "Classical",
   "title": "Ode to Joy",
   "composer": "Ludwig van Beethoven (1824)",
   "time": "4/4"
  },
  {
   "slug": "jingle-bells",
+  "level": "Holidays",
   "title": "Jingle Bells (chorus)",
   "composer": "James Lord Pierpont (1857)",
   "time": "4/4"
  },
  {
   "slug": "happy-birthday",
+  "level": "First songs",
   "title": "Happy Birthday to You",
   "composer": "Mildred J. Hill & Patty Smith Hill",
   "time": "3/4"
  },
  {
   "slug": "fur-elise",
+  "level": "Classical",
   "title": "Für Elise (opening)",
   "composer": "Ludwig van Beethoven (1810)",
   "time": "3/8"
+ },
+ {
+  "slug": "hot-cross-buns",
+  "level": "First songs",
+  "title": "Hot Cross Buns",
+  "composer": "Traditional",
+  "time": "4/4"
+ },
+ {
+  "slug": "old-macdonald",
+  "level": "First songs",
+  "title": "Old MacDonald Had a Farm",
+  "composer": "Traditional",
+  "time": "4/4"
+ },
+ {
+  "slug": "london-bridge",
+  "level": "Folk songs",
+  "title": "London Bridge Is Falling Down",
+  "composer": "Traditional",
+  "time": "4/4"
+ },
+ {
+  "slug": "yankee-doodle",
+  "level": "Folk songs",
+  "title": "Yankee Doodle",
+  "composer": "Traditional (1700s)",
+  "time": "4/4"
+ },
+ {
+  "slug": "au-clair-de-la-lune",
+  "level": "Folk songs",
+  "title": "Au clair de la lune",
+  "composer": "Traditional French",
+  "time": "4/4"
+ },
+ {
+  "slug": "lightly-row",
+  "level": "Folk songs",
+  "title": "Lightly Row (Hänschen klein)",
+  "composer": "Traditional German",
+  "time": "4/4"
+ },
+ {
+  "slug": "greensleeves",
+  "level": "Folk songs",
+  "title": "Greensleeves",
+  "composer": "Traditional English (1500s)",
+  "time": "3/4"
+ },
+ {
+  "slug": "silent-night",
+  "level": "Holidays",
+  "title": "Silent Night",
+  "composer": "Franz Xaver Gruber (1818)",
+  "time": "3/4"
+ },
+ {
+  "slug": "we-wish-you-a-merry-christmas",
+  "level": "Holidays",
+  "title": "We Wish You a Merry Christmas",
+  "composer": "Traditional English",
+  "time": "3/4"
+ },
+ {
+  "slug": "good-king-wenceslas",
+  "level": "Holidays",
+  "title": "Good King Wenceslas",
+  "composer": "Melody from Piae Cantiones (1582)",
+  "time": "4/4"
+ },
+ {
+  "slug": "deck-the-halls",
+  "level": "Holidays",
+  "title": "Deck the Halls (opening)",
+  "composer": "Traditional Welsh",
+  "time": "4/4"
+ },
+ {
+  "slug": "minuet-in-g",
+  "level": "Classical",
+  "title": "Minuet in G",
+  "composer": "Christian Petzold (c. 1725), long credited to J. S. Bach",
+  "time": "3/4"
+ },
+ {
+  "slug": "canon-in-d",
+  "level": "Classical",
+  "title": "Canon in D (the famous line)",
+  "composer": "Johann Pachelbel (c. 1690)",
+  "time": "4/4"
+ },
+ {
+  "slug": "hall-of-the-mountain-king",
+  "level": "Classical",
+  "title": "In the Hall of the Mountain King (opening)",
+  "composer": "Edvard Grieg (1875)",
+  "time": "4/4"
+ },
+ {
+  "slug": "prelude-in-c",
+  "level": "Classical",
+  "title": "Prelude in C (opening)",
+  "composer": "J. S. Bach (1722)",
+  "time": "4/4"
  }
 ]

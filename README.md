@@ -21,10 +21,13 @@ Live at **[adamdobrer.ca/projects/sheet-letters](https://adamdobrer.ca/projects/
 
 ## Song library and links
 
-Eight public-domain songs to try (Twinkle, Mary Had a Little Lamb, Frère Jacques, Row Row Row Your Boat,
-Ode to Joy, Jingle Bells, Happy Birthday, Für Elise), with melody, chords and lyrics. They're written in a
-compact shorthand in `tools/songs.py`, which checks every bar adds up and writes the MusicXML:
-`python3 tools/songs.py`.
+23 public-domain songs to try, grouped by level: **first songs** (Twinkle, Mary Had a Little Lamb, Hot
+Cross Buns, Row Row Row Your Boat, Old MacDonald, Happy Birthday), **folk songs** (Frère Jacques, London
+Bridge, Yankee Doodle, Au clair de la lune, Lightly Row, Greensleeves), **holidays** (Jingle Bells, Silent
+Night, We Wish You a Merry Christmas, Good King Wenceslas, Deck the Halls) and **classical** (Ode to Joy,
+Für Elise, Minuet in G, Canon in D, In the Hall of the Mountain King, Bach's Prelude in C), with chords and,
+for the sung ones, lyrics. They're written in a compact shorthand in `tools/songs.py`, which checks every bar
+adds up and writes the MusicXML: `python3 tools/songs.py`.
 
 Every library song has a link that opens it as you're seeing it:
 `…/app/#song=ode-to-joy&key=2&names=fixed&melody=1` (key in semitones; names = letters, fixed, movable or
@@ -43,6 +46,14 @@ the share sheet on a phone).
   hidden staves left out, at the speed you've set. MusicXML (for MuseScore, Sibelius, Finale, Dorico) keeps
   chords, lyrics, ties, triplets, grace notes and repeats. MIDI (for GarageBand, Logic and the like) keeps the
   notes, speed, key and lyrics, with repeats written out in playing order.
+
+## Fixing notes
+
+**Fix notes** turns on editing: tap any note, then make it higher or lower (or an octave), move it earlier or
+later, make it shorter or longer, delete it, or add a note after it. Each change plays the note, and **Undo**
+steps back. On a keyboard: ↑ ↓ change the pitch (with Shift, an octave), ← → go to the previous or next note,
+Delete removes it, Ctrl/Cmd+Z undoes, Esc lets go. Changes stay through transposing, melody only and playing,
+and **Save MusicXML** or **Save MIDI** keeps them. Most useful after opening a recording.
 
 ## How a recording becomes letters
 
